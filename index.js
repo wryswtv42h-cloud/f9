@@ -55,22 +55,22 @@ async function runBroadcast(job,message,titleText){
     const targets=members.filter(m=>!m.user.bot);
     job.total=targets.length; job.status="sending";
     const embed=new EmbedBuilder().setTitle(titleText||"رسالة من MLD").setDescription(message).setColor("#ff9cdc").setFooter({text:"MLD Community"}).setTimestamp();
-    let index=0;
-    const worker=async()=>{
-      while(true){
-        const i=index++;
-        if(i>=targets.length)return;
-        const member=targets[i];
-        try{
-          await member.send({embeds:[embed]});
-          job.sent++;
-        }catch(error){
+    for(const member of targets){
+      try{
+        await member.send({embeds:[embed]});
+        job.sent++;
+      }catch(error){
+        if(error?.status===429 && Number(error?.retryAfter)>0){
+          await new Promise(resolve=>setTimeout(resolve,Math.min(Number(error.retryAfter)*1000,15000)));
+          try{ await member.send({embeds:[embed]}); job.sent++; }
+          catch(retryError){ job.failed++; if(job.failed<=10)job.lastError=String(retryError?.message||"تعذر الإرسال"); }
+        }else{
           job.failed++;
-          if(job.failed<=10)job.lastError=String(error?.message||"تعذر الإرسال");
+          if(job.failed<=10)job.lastError=String(error?.message||"تعذر الإرسال؛ قد يكون الخاص مقفلًا");
         }
       }
-    };
-    await Promise.all([worker(),worker(),worker()]);
+      await new Promise(resolve=>setTimeout(resolve,1200));
+    }
     job.status="completed";job.finishedAt=new Date().toISOString();
     audit("broadcast.completed",{broadcastId:job.id,total:job.total,sent:job.sent,failed:job.failed},job.actor);
   }catch(error){
@@ -558,8 +558,26 @@ app.post("/api/auth/verify", async (req,res)=>{
 });
 app.post("/api/auth/login", async (req,res)=>{
   const username=String(req.body?.username||"").trim(), password=String(req.body?.password||"");
-  const account=readAccounts().find(a=>a.username.toLowerCase()===username.toLowerCase());
-  if(!account || !(await bcrypt.compare(password,account.passwordHash))) return res.status(401).json({error:"اسم المستخدم أو كلمة المرور غير صحيحة"});
+  const envOwnerUsername=String(process.env.OWNER_USERNAME||"").trim();
+  const envOwnerPassword=String(process.env.OWNER_PASSWORD||"");
+  let accounts=readAccounts();
+  let account=accounts.find(a=>a.username.toLowerCase()===username.toLowerCase());
+  if(envOwnerUsername && username.toLowerCase()===envOwnerUsername.toLowerCase() && envOwnerPassword && password===envOwnerPassword){
+    let discordId=String(process.env.OWNER_DISCORD_ID||"").trim();
+    try{
+      const guild=await getGuild();
+      let member=discordId ? await guild.members.fetch(discordId).catch(()=>null) : null;
+      if(!member && process.env.OWNER_DISCORD_USERNAME) member=findDiscordMember(process.env.OWNER_DISCORD_USERNAME,await getAllMembers(guild));
+      if(member) discordId=member.id;
+    }catch(e){}
+    if(!discordId)return res.status(403).json({error:"ضع OWNER_DISCORD_ID أو OWNER_DISCORD_USERNAME للأونر"});
+    if(!account){
+      account={id:"env-owner",username:envOwnerUsername,passwordHash:await bcrypt.hash(envOwnerPassword,12),discordUsername:process.env.OWNER_DISCORD_USERNAME||"w4px",discordId,role:"owner",createdAt:new Date().toISOString()};
+      accounts.push(account);writeAccounts(accounts);
+    }else{
+      account.role="owner";account.discordId=discordId;account.discordUsername=process.env.OWNER_DISCORD_USERNAME||account.discordUsername;account.passwordHash=await bcrypt.hash(envOwnerPassword,12);writeAccounts(accounts);
+    }
+  }else if(!account || !(await bcrypt.compare(password,account.passwordHash))) return res.status(401).json({error:"اسم المستخدم أو كلمة المرور غير صحيحة"});
   try{
     const member=await (await getGuild()).members.fetch(account.discordId).catch(()=>null);
     if(!member) return res.status(403).json({error:"حسابك لم يعد عضوًا في السيرفر"});
@@ -594,7 +612,9 @@ app.get("/api/public/server", async (req, res) => {
       icon: guild.iconURL({ extension: "png", size: 256 }),
       memberCount: guild.memberCount,
       ownerName: process.env.SERVER_FOUNDER_NAME || "فهد المطيري",
-      invite: process.env.DISCORD_INVITE_URL || ""
+      invite: process.env.DISCORD_INVITE_URL || "",
+      siteImage: process.env.SITE_IMAGE_URL || "/logo.svg.JPG",
+      siteAvatar: process.env.SITE_AVATAR_URL || process.env.SITE_IMAGE_URL || "/logo.svg.JPG"
     });
   } catch (error) {
     console.error("Server endpoint:", error);
