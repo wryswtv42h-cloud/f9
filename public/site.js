@@ -65,15 +65,17 @@ document.addEventListener("click",async e=>{
   if(a==="private-add")return privateMemberAdd();
   if(a.startsWith("private-remove:"))return privateRemove(a.split(":")[1]);
   if(a==="owner-accounts")return ownerAccounts();
-  if(a.startsWith("owner-private:"))return ownerPrivate(a.split(":")[1]); if(a.startsWith("owner-delete:")){if(!confirm("حذف الحساب نهائياً؟"))return;await api("/api/owner/accounts/"+a.split(":")[1],{method:"DELETE"});return ownerAccounts()}
+  if(a.startsWith("owner-private:"))return ownerPrivate(a.split(":")[1]);
+  if(a.startsWith("owner-group-status:")){const [_,id,status]=a.split(":");await api("/api/admin/groups/"+id+"/status",{method:"POST",body:JSON.stringify({status})});return ownerGroups()}
+  if(a.startsWith("owner-group-request:")){const [_,gid,rid,status]=a.split(":");await api("/api/groups/"+gid+"/requests/"+rid+"/status",{method:"POST",body:JSON.stringify({status})});return ownerGroups()} if(a.startsWith("owner-delete:")){if(!confirm("حذف الحساب نهائياً؟"))return;await api("/api/owner/accounts/"+a.split(":")[1],{method:"DELETE"});return ownerAccounts()}
   if(a.startsWith("owner-admin:")){await api("/api/owner/admins",{method:"POST",body:JSON.stringify({userId:a.split(":")[1]})});notify("تم منح الإدارة");return ownerAccounts()}
   if(a.startsWith("owner-unadmin:")){await api("/api/owner/admins/"+a.split(":")[1],{method:"DELETE"});notify("تمت إزالة الإدارة");return ownerAccounts()}
   if(a==="owner-logs")return ownerLogs();
-  if(a==="owner-apps")return ownerApplications();
+  if(a==="owner-apps")return ownerApplications(); if(a==="owner-groups")return ownerGroups();
   if(a==="owner-subs")return ownerSubs();
   if(a==="owner-settings")return ownerSettings();
   if(a==="save-settings"){await api("/api/owner/settings",{method:"PATCH",body:JSON.stringify({announcement:$("#ann").value,announcementColor:$("#annc").value})});close();notify("تم حفظ الإعلان")}
-  if(a==="admin-tickets")return adminTickets(); if(a==="admin-applications")return adminApplications(); if(a==="admin-groups")return adminGroups();
+  if(a==="admin-tickets")return adminTickets(); if(a==="admin-applications")return adminApplications();
   if(a==="admin-dm")return adminDM();
   if(a==="send-admin-dm"){await api("/api/admin/dm",{method:"POST",body:JSON.stringify({discordUsername:$("#dm-user").value,message:$("#dm-text").value})});close();notify("تم إرسال الرسالة")}
  }catch(err){notify(err.message)}
@@ -116,12 +118,24 @@ async function applicationSubmit(){const answers=[...document.querySelectorAll("
 async function reviews(){let a=[];try{a=await api("/api/reviews")}catch{}app.innerHTML=shell("REVIEWS","الآراء","الجميع يقدر يقرأ ويكتب رأيه، حتى بدون حساب.",'<div class="toolbar">'+btn("＋ أضف رأيك","new-review")+'</div><div class="review-grid">'+(a.length?a.map(x=>'<article class="review"><div class="stars">'+("★".repeat(x.rating))+'</div><p>'+esc(x.text)+'</p><b>'+esc(x.name)+'</b>'+(me?.role==="owner"?'<br>'+btn("حذف","delete-review:"+x.id,"ghost"):"")+'</article>').join(""):'<div class="empty">لا توجد آراء بعد.</div>')+'</div>')}
 function reviewCreate(){open('<div class="form-grid"><h2>رأيك في MLD</h2><textarea id="review-text" class="full" rows="6" placeholder="اكتب رأيك..."></textarea><input id="review-rating" type="number" min="1" max="5" value="5">'+btn("نشر","submit-review")+"</div>")}
 
-async function admin(){if(!me||!["admin","owner"].includes(me.role))return page("home");app.innerHTML=shell("ADMIN","الإدارة","هذه اللوحة تظهر للإداريين والمالك فقط.",'<div class="owner-grid"><article class="owner-box">'+btn("🎫 التذاكر","admin-tickets")+'</article><article class="owner-box">'+btn("📋 التقديمات","admin-applications")+'</article><article class="owner-box">'+btn("📨 رسالة خاصة","admin-dm")+'</article><article class="owner-box">'+btn("👥 القروبات","admin-groups")+'</article></div>')}
+async function admin(){if(!me||!["admin","owner"].includes(me.role))return page("home");app.innerHTML=shell("ADMIN","الإدارة","هذه اللوحة تظهر للإداريين والمالك فقط.",'<div class="owner-grid"><article class="owner-box">'+btn("🎫 التذاكر","admin-tickets")+'</article><article class="owner-box">'+btn("📋 التقديمات","admin-applications")+'</article><article class="owner-box">'+btn("📨 رسالة خاصة","admin-dm")+'</article><article class="owner-box">'+btn("👥 القروبات","owner-groups")+'</article></div>')}
 async function adminTickets(){const a=await api("/api/tickets");open('<div class="form-grid"><h2>تذاكر الإدارة</h2>'+(a.map(t=>'<div class="feature"><b>'+esc(t.userName)+'</b><h3>'+esc(t.subject)+'</h3><p>'+esc(t.message)+'</p>'+btn("فتح","ticket:"+t.id,"ghost")+'</div>').join("")||'<p class="muted">لا توجد تذاكر.</p>')+'</div>')}
 async function adminApplications(){const a=await api("/api/admin/applications");open("<div class=\"form-grid\"><h2>التقديمات</h2>"+(a.map(x=>"<div class=\"feature\"><h3>"+esc(x.name)+"</h3><p>"+esc(x.discordUsername)+"</p>"+x.answers.map((v,i)=>"<p><b>س"+(i+1)+":</b> "+esc(v)+"</p>").join("")+"<span class=\"role\">"+esc(x.status)+"</span><div class=\"toolbar\">"+btn("قبول","application-status:"+x.id+":accepted","ghost")+" "+btn("رفض","application-status:"+x.id+":rejected","ghost")+"</div></div>").join("")||"<p>لا توجد طلبات.</p>")+"</div>")}
 async function adminGroups(){const d=await api("/api/admin/groups");open("<div class=\"form-grid\"><h2>إدارة القروبات</h2>"+(d.groups||[]).filter(g=>g.status==="pending").map(g=>"<div class=\"feature\"><h3>"+esc(g.name)+"</h3><p>"+esc(g.description)+"</p></div>").join("")+"<p class=\"muted\">طلبات الإنشاء المعروضة هنا تحتاج اعتماداً.</p></div>")}
 async function adminDM(){open('<div class="form-grid"><h2>رسالة من إدارة ملاذ</h2><input id="dm-user" class="full" placeholder="Discord username"><textarea id="dm-text" class="full" rows="6" placeholder="الرسالة"></textarea>'+btn("إرسال بالخاص","send-admin-dm")+'</div>')}
-async function owner(){if(me?.role!=="owner")return page("home");app.innerHTML=shell("OWNER","لوحة الأونر","كل أدوات التحكم الحساسة هنا، ولا تظهر لأي عضو أو إداري.",'<div class="owner-grid"><article class="owner-box">'+btn("📜 لوقات كل الموقع","owner-logs")+'</article><article class="owner-box">'+btn("👤 حسابات الأعضاء","owner-accounts")+'</article><article class="owner-box">'+btn("📋 التقديمات","owner-apps")+'</article><article class="owner-box">'+btn("🤖 اشتراكات البوتات","owner-subs")+'</article><article class="owner-box">'+btn("📢 الإعلان","owner-settings")+'</article><article class="owner-box">'+btn("💬 محادثات خاصة","owner-accounts")+'</article></div>')}
+async function owner(){if(me?.role!=="owner")return page("home");app.innerHTML=shell("OWNER","لوحة الأونر","كل أدوات التحكم الحساسة هنا، ولا تظهر لأي عضو أو إداري.",'<div class="owner-grid"><article class="owner-box">'+btn("📜 لوقات كل الموقع","owner-logs")+'</article><article class="owner-box">'+btn("👤 حسابات الأعضاء","owner-accounts")+'</article><article class="owner-box">'+btn("📋 التقديمات","owner-apps")+'</article><article class="owner-box">'+btn("👥 القروبات والطلبات","owner-groups")+'</article><article class="owner-box">'+btn("🤖 اشتراكات البوتات","owner-subs")+'</article><article class="owner-box">'+btn("📢 الإعلان","owner-settings")+'</article><article class="owner-box">'+btn("💬 محادثات خاصة","owner-accounts")+'</article></div>')}
+async function ownerGroups(){
+ const d=await api("/api/admin/groups"),groups=d.groups||[];
+ const B=(t,a,c)=>'<button type="button" class="'+(c||"ghost")+'" data-action="'+a+'">'+t+'</button>';
+ const html=groups.map(g=>{
+  const rs=(d.requests||[]).filter(r=>r.groupId===g.id&&r.status==="pending");
+  return '<div class="feature"><h3>'+esc(g.name)+'</h3><p>'+esc(g.description)+'</p><p class="muted">المالك: '+esc(g.ownerName)+' · الحالة: '+esc(g.status)+'</p>'+
+   (g.status==="pending"?'<div class="toolbar">'+B("قبول القروب","owner-group-status:"+g.id+":approved")+B("رفض","owner-group-status:"+g.id+":rejected","ghost danger")+'</div>':'')+
+   (rs.length?'<hr><b>طلبات الانضمام</b>'+rs.map(r=>'<div class="feature" style="margin-top:8px"><b>'+esc(r.name)+'</b><div class="toolbar">'+B("قبول","owner-group-request:"+g.id+":"+r.id+":accepted")+B("رفض","owner-group-request:"+g.id+":"+r.id+":rejected","ghost danger")+'</div></div>').join(""):"")+
+  '</div>';
+ }).join("")||'<p class="muted">لا توجد قروبات.</p>';
+ open('<div class="form-grid"><h2>القروبات والطلبات</h2><p class="muted">اعتماد إنشاء القروبات وطلبات الانضمام، مع إنشاء موارد Discord عند القبول.</p>'+html+'</div>');
+}
 async function ownerAccounts(){
  const a=await api("/api/owner/accounts");
  const html=a.map(u=>{
