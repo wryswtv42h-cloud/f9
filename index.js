@@ -277,78 +277,32 @@ function startManagedBot(id){
  botInstances.set(id,bc);cfg.status="starting";return bc.login(cfg.token).then(()=>cfg).catch(e=>{cfg.status="error";cfg.error=e.message;botInstances.delete(id);throw e});
 }
 app.get("/api/platform/owner/bots",(req,res)=>{const owner=needUser(req,res);if(!owner)return;if(owner.role!=="owner")return res.status(403).json({error:"للأونر فقط"});res.json({bots:[...botConfigs.values()].map(({token,...safe})=>safe),modules:BOT_MODULES})});
-app.post("/api/platform/owner/bots",(req,res)=>{
- const owner=needUser(req,res);if(!owner)return;
+function createManagedBotFor(creator,req,res){
  const name=safeText(req.body?.name,60),guildTarget=safeText(req.body?.guildId,30),botToken=String(req.body?.token||"").trim(),modules=[...new Set(Array.isArray(req.body?.modules)?req.body.modules.filter(x=>BOT_MODULES[x]):[])];
  if(!name||!guildTarget||!botToken||!modules.length)return res.status(400).json({error:"عبّ الاسم وID السيرفر والتوكن واختر خدمة واحدة على الأقل"});
- const id=newId();botConfigs.set(id,{id,name,guildId:guildTarget,modules,token:botToken,plan:"basic",status:"created",createdAt:nowIso(),updatedAt:nowIso(),prefix:"!",ownerUsername:owner.username,watching:"MLD Community",statusText:"online",serverLink:"https://discord.com/channels/"+encodeURIComponent(guildTarget)});
- startManagedBot(id).then(cfg=>{audit(owner,"create","managed_bot",id,{name,modules,guildId:guildTarget});}).catch(()=>{});
- const cfg=botConfigs.get(id);res.json({ok:true,bot:{...cfg,token:undefined},invite:cfg.invite||null,message:"تم إنشاء البوت وبدء تشغيله. بعد ظهور رابط الإضافة أضفه للسيرفر."});
-});
+ const id=newId();
+ const cfg={id,name,guildId:guildTarget,modules,token:botToken,plan:"basic",status:"created",createdAt:nowIso(),updatedAt:nowIso(),prefix:"!",ownerUsername:creator.username,creatorUsername:creator.username,watching:null,statusText:"online",serverLink:process.env.DISCORD_INVITE_URL||("https://discord.com/channels/"+encodeURIComponent(guildTarget)),expiresAt:null};
+ botConfigs.set(id,cfg);
+ startManagedBot(id).then(()=>audit(creator,"create","managed_bot",id,{name,modules,guildId:guildTarget,ownerUsername:creator.username})).catch(()=>{});
+ res.json({ok:true,bot:{...cfg,token:undefined},invite:cfg.invite||null,message:"تم إنشاء البوت وبدء تشغيله. بعد ظهور رابط الإضافة أضفه للسيرفر."});
+}
+app.post("/api/platform/bots",(req,res)=>{const creator=needUser(req,res);if(!creator)return;return createManagedBotFor(creator,req,res)});
+app.post("/api/platform/owner/bots",(req,res)=>{const owner=needUser(req,res);if(!owner)return;if(owner.role!=="owner")return res.status(403).json({error:"للأونر فقط"});return createManagedBotFor(owner,req,res)});
 app.patch("/api/platform/owner/bots/:id/subscription",(req,res)=>{const owner=needUser(req,res);if(!owner)return;if(owner.role!=="owner")return res.status(403).json({error:"للأونر فقط"});const b=botConfigs.get(req.params.id);if(!b)return res.status(404).json({error:"البوت غير موجود"});b.plan=safeText(req.body?.plan,40)||"basic";b.expiresAt=req.body?.expiresAt||null;b.updatedAt=nowIso();applyBotPresence(b);audit(owner,"update","managed_bot_subscription",b.id,{plan:b.plan,expiresAt:b.expiresAt});res.json({ok:true,bot:{...b,token:undefined}})});
 app.delete("/api/platform/owner/bots/:id",(req,res)=>{const owner=needUser(req,res);if(!owner)return;if(owner.role!=="owner")return res.status(403).json({error:"للأونر فقط"});if(!botConfigs.has(req.params.id))return res.status(404).json({error:"البوت غير موجود"});stopManagedBot(req.params.id);botConfigs.delete(req.params.id);audit(owner,"delete","managed_bot",req.params.id);res.json({ok:true})});
 
 
 // Public bot directory + per-owner bot control.
-function botOwner(req){ return sessionUser(req); }
-function botSafeProfile(cfg){
-  return {
-    id:cfg.id,name:cfg.name,botId:cfg.botId||null,guildId:cfg.guildId,
-    modules:cfg.modules||[],plan:cfg.plan||"basic",status:cfg.status||"created",
-    prefix:cfg.prefix||"!",watching:cfg.watching||null,statusText:cfg.statusText||"online",
-    watchingLocked:!["pro","premium","enterprise"].includes(String(cfg.plan||"basic").toLowerCase()),
-    profileLocked:!["pro","premium","enterprise"].includes(String(cfg.plan||"basic").toLowerCase()),
-    serverLink:cfg.serverLink||("https://discord.com/channels/"+encodeURIComponent(cfg.guildId)),
-    avatar:cfg.avatar||null,createdAt:cfg.createdAt,updatedAt:cfg.updatedAt
-  };
-}
-function botHasPremium(cfg){
-  return ["pro","premium","enterprise"].includes(String(cfg.plan||"basic").toLowerCase()) &&
-    (!cfg.expiresAt || new Date(cfg.expiresAt).getTime()>Date.now());
-}
-function applyBotPresence(cfg){
-  const bc=botInstances.get(cfg.id);
-  if(!bc?.user)return;
-  try{
-    bc.user.setPresence({
-      status:cfg.statusText==="idle"?"idle":cfg.statusText==="dnd"?"dnd":"online",
-      activities:cfg.watching?[{name:String(cfg.watching).slice(0,128),type:3}]:[]
-    });
-  }catch{}
-}
-app.get("/api/platform/bots",(req,res)=>{
-  const me=botOwner(req);
-  const bots=[...botConfigs.values()].filter(b=>me?.role==="owner"||b.ownerUsername===me?.username).map(botSafeProfile);
-  res.json({bots});
-});
-app.get("/api/platform/bots/:id",(req,res)=>{
-  const b=botConfigs.get(req.params.id); if(!b)return res.status(404).json({error:"البوت غير موجود"});
-  res.json({bot:botSafeProfile(b)});
-});
-app.patch("/api/platform/bots/:id/profile",(req,res)=>{
-  const me=botOwner(req); if(!me)return res.status(401).json({error:"سجّل دخولك أولًا"});
-  const b=botConfigs.get(req.params.id); if(!b)return res.status(404).json({error:"البوت غير موجود"});
-  if(me.role!=="owner"&&b.ownerUsername!==me.username)return res.status(403).json({error:"هذا البوت ليس لك"});
-  if(!botHasPremium(b))return res.status(403).json({error:"تعديل الواتشينق والحالة وملف البوت يحتاج اشتراكًا مفعّلًا من الأونر"});
-  if(req.body?.watching!==undefined)b.watching=safeText(req.body.watching,128)||"";
-  if(req.body?.statusText!==undefined)b.statusText=["online","idle","dnd"].includes(req.body.statusText)?req.body.statusText:"online";
-  if(req.body?.serverLink!==undefined)b.serverLink=safeText(req.body.serverLink,300)||("https://discord.com/channels/"+encodeURIComponent(b.guildId));
-  if(req.body?.prefix!==undefined)b.prefix=safeText(req.body.prefix,5)||"!";
-  b.updatedAt=nowIso();applyBotPresence(b);
-  res.json({ok:true,bot:botSafeProfile(b)});
-});
-app.patch("/api/platform/bots/:id/settings",(req,res)=>{
-  const me=botOwner(req); if(!me)return res.status(401).json({error:"سجّل دخولك أولًا"});
-  const b=botConfigs.get(req.params.id); if(!b)return res.status(404).json({error:"البوت غير موجود"});
-  if(me.role!=="owner"&&b.ownerUsername!==me.username)return res.status(403).json({error:"هذا البوت ليس لك"});
-  if(req.body?.name!==undefined)b.name=safeText(req.body.name,60)||b.name;
-  if(req.body?.prefix!==undefined)b.prefix=safeText(req.body.prefix,5)||"!";
-  b.updatedAt=nowIso();res.json({ok:true,bot:botSafeProfile(b)});
-});
-app.get("/api/platform/my-bots",(req,res)=>{
-  const me=botOwner(req); if(!me)return res.status(401).json({error:"سجّل دخولك أولًا"});
-  res.json({bots:[...botConfigs.values()].filter(b=>me.role==="owner"||b.ownerUsername===me.username).map(botSafeProfile)});
-});
+function botOwner(req){return sessionUser(req)}
+function botHasPremium(cfg){return ["pro","premium","enterprise"].includes(String(cfg.plan||"basic").toLowerCase())&&(!cfg.expiresAt||new Date(cfg.expiresAt).getTime()>Date.now())}
+function botDefaultWatching(cfg){const link=cfg.serverLink||process.env.DISCORD_INVITE_URL||"";return link?"MLD · "+link:"MLD Community"}
+function botSafeProfile(cfg){const premium=botHasPremium(cfg);return{id:cfg.id,name:cfg.name,botId:cfg.botId||null,guildId:cfg.guildId,modules:cfg.modules||[],plan:cfg.plan||"basic",status:cfg.status||"created",prefix:cfg.prefix||"!",watching:premium?(cfg.watching||botDefaultWatching(cfg)):botDefaultWatching(cfg),statusText:premium?(cfg.statusText||"online"):"online",watchingLocked:!premium,profileLocked:!premium,serverLink:cfg.serverLink||process.env.DISCORD_INVITE_URL||"",avatar:cfg.avatar||null,creatorUsername:cfg.ownerUsername||cfg.creatorUsername||"MALADH",createdAt:cfg.createdAt,updatedAt:cfg.updatedAt,expiresAt:cfg.expiresAt||null}}
+function applyBotPresence(cfg){const bc=botInstances.get(cfg.id);if(!bc?.user)return;const premium=botHasPremium(cfg);const watching=premium?(cfg.watching||botDefaultWatching(cfg)):botDefaultWatching(cfg);const status=premium&&["online","idle","dnd","invisible"].includes(cfg.statusText)?cfg.statusText:"online";try{bc.user.setPresence({status,activities:[{name:String(watching).slice(0,128),type:3}]})}catch{}}
+app.get("/api/platform/bots",(req,res)=>res.json({bots:[...botConfigs.values()].map(botSafeProfile),modules:BOT_MODULES}));
+app.get("/api/platform/bots/:id",(req,res)=>{const b=botConfigs.get(req.params.id);if(!b)return res.status(404).json({error:"البوت غير موجود"});res.json({bot:botSafeProfile(b),modules:BOT_MODULES})});
+app.patch("/api/platform/bots/:id/profile",(req,res)=>{const me=botOwner(req);if(!me)return res.status(401).json({error:"سجّل دخولك أولًا"});const b=botConfigs.get(req.params.id);if(!b)return res.status(404).json({error:"البوت غير موجود"});if(me.role!=="owner"&&b.ownerUsername!==me.username)return res.status(403).json({error:"هذا البوت ليس لك"});const premium=botHasPremium(b);if(req.body?.watching!==undefined&&!premium)return res.status(403).json({error:"تعديل الواتشينق يحتاج اشتراكًا مفعّلًا من الأونر"});if(req.body?.statusText!==undefined&&!premium)return res.status(403).json({error:"تغيير الحالة يحتاج اشتراكًا مفعّلًا من الأونر"});if(req.body?.serverLink!==undefined&&!premium)return res.status(403).json({error:"تغيير رابط السيرفر في الملف يحتاج اشتراكًا مفعّلًا من الأونر"});if(req.body?.watching!==undefined)b.watching=safeText(req.body.watching,128)||null;if(req.body?.statusText!==undefined)b.statusText=["online","idle","dnd","invisible"].includes(req.body.statusText)?req.body.statusText:"online";if(req.body?.serverLink!==undefined)b.serverLink=safeText(req.body.serverLink,300)||null;if(req.body?.prefix!==undefined)b.prefix=safeText(req.body.prefix,5)||"!";b.updatedAt=nowIso();applyBotPresence(b);res.json({ok:true,bot:botSafeProfile(b)})});
+app.patch("/api/platform/bots/:id/settings",(req,res)=>{const me=botOwner(req);if(!me)return res.status(401).json({error:"سجّل دخولك أولًا"});const b=botConfigs.get(req.params.id);if(!b)return res.status(404).json({error:"البوت غير موجود"});if(me.role!=="owner"&&b.ownerUsername!==me.username)return res.status(403).json({error:"هذا البوت ليس لك"});if(req.body?.name!==undefined)b.name=safeText(req.body.name,60)||b.name;if(req.body?.prefix!==undefined)b.prefix=safeText(req.body.prefix,5)||"!";b.updatedAt=nowIso();res.json({ok:true,bot:botSafeProfile(b)})});
+app.get("/api/platform/my-bots",(req,res)=>{const me=botOwner(req);if(!me)return res.status(401).json({error:"سجّل دخولك أولًا"});res.json({bots:[...botConfigs.values()].filter(b=>me.role==="owner"||b.ownerUsername===me.username).map(botSafeProfile),modules:BOT_MODULES})});
 app.post("/api/auth/logout",(req,res)=>{const token=req.headers.cookie?.match(/(?:^|;\s*)mld_session=([^;]+)/)?.[1];if(token)sessions.delete(token);res.setHeader("Set-Cookie","mld_session=; Path=/; HttpOnly; Secure; SameSite=Lax; Max-Age=0");res.json({ok:true})});
 
 // MALADH platform modules (runtime store; use durable database before production scale).
