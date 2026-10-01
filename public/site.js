@@ -3899,7 +3899,11 @@ async function mldNavigate(v) {
 
 window.MLDNavigate = mldNavigate;
 
-/* Menu is wired once by index.html; avoid duplicate click handlers. */() {
+/* Menu is wired once by index.html; avoid duplicate click handlers. */
+function routeFromHash() {
+  const v = (location.hash || "#home").slice(1) || "home";
+  Promise.resolve(change(v)).catch(err => showNavigationError(v, err));
+}
   const v =
     (location.hash || "#home")
       .slice(1) ||
