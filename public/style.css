@@ -237,3 +237,8 @@ body{padding-top:0!important;}
   #floating-menu-button.floating-menu-button{top:14px!important;right:14px!important;}
   #mobile-menu.mobile-menu{position:fixed!important;top:76px!important;right:12px!important;left:12px!important;max-height:calc(100dvh - 92px)!important;overflow-y:auto!important;}
 }
+
+.bot-module-option{display:flex!important;align-items:center;gap:12px;cursor:pointer;text-align:right}
+.bot-module-option input{accent-color:#ff9cdc;width:18px;height:18px;flex:0 0 auto}
+.bot-module-option p{margin:.25rem 0 0}
+.bot-runtime{min-width:100px}
