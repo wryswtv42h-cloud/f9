@@ -234,6 +234,23 @@ app.post("/api/platform/owner/accounts", async (req,res)=>{
   res.json({ok:true,user:publicUser(u)});
 });
 app.get("/api/platform/owner/accounts",(req,res)=>{const owner=needUser(req,res);if(!owner)return;if(owner.role!=="owner")return res.status(403).json({error:"للأونر فقط"});res.json({users:[...siteUsers.values()].map(u=>({username:u.username,displayName:u.displayName,discordUsername:u.discordUsername,role:u.role,ownerCreated:Boolean(u.ownerCreated),createdAt:u.createdAt}))})});
+app.patch("/api/platform/owner/accounts/:username",async(req,res)=>{
+ const owner=needUser(req,res);if(!owner)return;if(owner.role!=="owner")return res.status(403).json({error:"للأونر فقط"});
+ const username=cleanUsername(req.params.username),u=siteUsers.get(username);if(!u)return res.status(404).json({error:"الحساب غير موجود"});
+ if(u.role==="owner")return res.status(400).json({error:"لا يمكن تعديل حساب الأونر"});
+ if(req.body?.displayName!==undefined)u.displayName=safeText(req.body.displayName,60)||u.displayName;
+ if(req.body?.role!==undefined){if(!["member","admin"].includes(String(req.body.role)))return res.status(400).json({error:"الدور غير صالح"});u.role=String(req.body.role);}
+ if(req.body?.password!==undefined){const p=String(req.body.password||"");if(p.length<6)return res.status(400).json({error:"كلمة المرور 6 أحرف على الأقل"});u.passwordHash=await bcrypt.hash(p,12);}
+ audit(owner,"update","site_account",username,{role:u.role});res.json({ok:true,user:publicUser(u)});
+});
+app.delete("/api/platform/owner/accounts/:username",(req,res)=>{
+ const owner=needUser(req,res);if(!owner)return;if(owner.role!=="owner")return res.status(403).json({error:"للأونر فقط"});
+ const username=cleanUsername(req.params.username),u=siteUsers.get(username);if(!u)return res.status(404).json({error:"الحساب غير موجود"});
+ if(u.role==="owner"||username===owner.username)return res.status(400).json({error:"لا يمكن حذف حساب الأونر"});
+ siteUsers.delete(username);for(const [token,su] of sessions)if(su.username===username)sessions.delete(token);audit(owner,"delete","site_account",username);res.json({ok:true});
+});
+app.get("/api/platform/owner/audit",(req,res)=>{const owner=needUser(req,res);if(!owner)return;if(owner.role!=="owner")return res.status(403).json({error:"للأونر فقط"});res.json({items:platform.audit.slice(0,200)});});
+
 
 const botInstances=new Map();
 const botConfigs=new Map();
