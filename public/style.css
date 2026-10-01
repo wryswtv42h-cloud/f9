@@ -82,3 +82,5 @@
 .bot-control-grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:12px}.bot-control-box h3{margin:0 0 10px;font-size:15px}.bot-control-box small{display:block;margin-top:7px;line-height:1.7}
 .bot-dashboard-actions{display:flex;flex-wrap:wrap;gap:9px;margin:16px 0}.bot-command-panel{margin-top:20px;padding-top:18px;border-top:1px solid #80589155}
 @media(max-width:650px){.bot-profile-stats,.bot-control-grid{grid-template-columns:1fr}.bot-create-head,.bot-dashboard-hero{align-items:flex-start;flex-direction:column}.bot-directory-grid{grid-template-columns:1fr}.bot-profile-card,.bot-create-card,.bot-dashboard-card{padding:16px}}
+
+.bot-server-link{margin:10px 0;padding:10px 12px;border:1px solid #80589155;border-radius:12px;background:#0e0915;color:var(--muted);overflow-wrap:anywhere}.bot-server-link a{color:var(--accent);font-weight:800;text-decoration:none}.bot-server-link a:hover{text-decoration:underline}
