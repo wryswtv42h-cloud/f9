@@ -311,3 +311,10 @@ body:before{content:"";position:fixed;inset:0;pointer-events:none;z-index:-1;bac
 @media(max-width:1050px){.hero{grid-template-columns:1fr;padding-top:58px}.hero-art{min-height:320px}.server-strip{grid-template-columns:repeat(3,1fr)!important}}
 @media(max-width:700px){.wrap{width:min(100% - 24px,1400px)}.hero{min-height:auto;padding:54px 0 24px;gap:22px}.hero h1{font-size:clamp(2.8rem,15vw,4.7rem)}.hero-art{min-height:260px;border-radius:28px}.server-strip{grid-template-columns:repeat(2,1fr)!important;border-radius:20px!important}.server-strip>div{min-height:86px;padding:16px}.panel{padding:20px!important;border-radius:22px!important}.game-toolbar{align-items:stretch}.game-toolbar>*{flex:1 1 auto}.codenames-grid{grid-template-columns:repeat(2,1fr)!important}.word-card{min-height:82px}.mld-table{min-height:420px;padding:16px}.footer{padding-bottom:22px}}
 @media(prefers-reduced-motion:reduce){*,*:before,*:after{scroll-behavior:auto!important;transition:none!important;animation:none!important}}
+
+body.mld-loading{cursor:progress!important}
+body.mld-loading #content{opacity:.72;filter:saturate(.85);transition:opacity .15s,filter .15s}
+.status-pop{animation:mldStatusPop .25s ease}
+@keyframes mldStatusPop{0%{opacity:.45;transform:translateY(3px)}100%{opacity:1;transform:none}}
+html[data-discord-online="false"] #server-name:after{content:" · غير متصل";font-size:.55em;color:#bfaac5}
+@media(max-width:520px){.server-strip{grid-template-columns:1fr 1fr!important}.server-strip>div:first-child{grid-column:1/-1}.hero-actions{display:flex;flex-direction:column;align-items:stretch;gap:12px}.hero-actions .primary{width:100%;text-align:center}}
