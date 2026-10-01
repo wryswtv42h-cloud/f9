@@ -44,14 +44,14 @@ const GAME_CATALOG={
 function deviceClass(){const w=innerWidth;const ua=navigator.userAgent;return /iPad|Tablet/i.test(ua)?"ipad":/Mobi|Android|iPhone/i.test(ua)?"mobile":w<900?"tablet":"desktop"}
 function gameShell(room,game,device){
  const cfg=GAME_CATALOG[game]||{min:2,max:12,desc:"لعبة MLD"};
- return '<div class="game-stage '+device+'"><div class="game-toolbar"><div><b>'+esc(game)+'</b><small>'+esc(cfg.desc)+'</small></div><span class="device-badge">'+device+'</span><button id="game-expand" class="primary">تكبير</button><button id="game-leave" class="primary">مغادرة</button><button id="game-end" class="primary">إنهاء الجلسة</button></div><div id="mld-game-board" class="mld-game-board"><div class="mld-table"><div class="mld-watermark">MALAZH<br><small>MLD • COMMUNITY</small></div><div id="game-ui" class="game-ui"></div></div></div><div class="game-info"><span>الجلسة: '+esc(room.title)+'</span><span>اللاعبون: '+room.participants.length+'/'+room.maxPlayers+'</span><span>المشاهدون: '+room.spectators.length+'</span></div></div>'
+ return '<div class="game-stage '+device+'"><div class="game-toolbar"><div><b>'+esc(game)+'</b><small>'+esc(cfg.desc)+'</small></div><span class="device-badge">'+device+'</span><button id="game-ready" class="primary">جاهز</button><button id="game-start" class="primary">ابدأ</button><button id="game-expand" class="primary">تكبير</button><button id="game-leave" class="primary">مغادرة</button><button id="game-end" class="primary">إنهاء الجلسة</button></div><div id="mld-game-board" class="mld-game-board"><div class="mld-table"><div class="mld-watermark">MALAZH<br><small>MLD • COMMUNITY</small></div><div id="game-ui" class="game-ui"></div></div></div><div class="game-info"><span>الجلسة: '+esc(room.title)+'</span><span>اللاعبون: '+room.participants.length+'/'+room.maxPlayers+'</span><span>المشاهدون: '+room.spectators.length+'</span></div></div>'
 }
 function renderGameBoard(game,room){
  const ui=$("#game-ui"); if(!ui)return;
  const cfg=GAME_CATALOG[game]||GAME_CATALOG["أونو"];
  if(game==="كود نيمز")ui.innerHTML='<div class="codenames-grid">'+["بحر","قمر","ملاذ","نار","ملك","ورد","سيف","باب","ذهب","نجم","مفتاح","عين","كتاب","شمس","نهر","قصر"].map((w,i)=>'<button class="word-card team-'+(i%3)+'">'+w+'</button>').join("")+'</div><p class="muted">القائد يرى التوزيع السري، والمخمّنون يرون بطاقات التخمين فقط.</p>';
  else if(game==="بلوت")ui.innerHTML='<div class="card-table"><div class="seat top">لاعب 2</div><div class="seat left">لاعب 3</div><div class="seat right">لاعب 4</div><div class="seat bottom">أنت</div><div class="deck">MLD<br><small>طاولة بلوت</small></div></div>';
- else ui.innerHTML='<div class="generic-game"><div class="game-logo">MLD</div><h2>'+esc(game)+'</h2><p>'+esc(cfg.desc)+'</p><div class="game-actions"><button id="game-start" class="primary">ابدأ الجولة</button><button id="game-ready" class="primary">جاهز ✓</button></div></div>';
+ else ui.innerHTML='<div class="generic-game"><div class="game-logo">MLD</div><h2>'+esc(game)+'</h2><p>'+esc(cfg.desc)+'</p><p class="muted">استخدم أزرار التحكم أعلى الطاولة لبدء الجولة أو تسجيل الجاهزية.</p></div>';
 }
 async function openGameRoom(roomId,game){
  const d=await apiRequest("/api/platform/rooms/"+roomId+"/state").catch(()=>null);
