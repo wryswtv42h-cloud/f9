@@ -173,3 +173,35 @@
 .mobile-menu .menu-item:hover{border-color:#ff9cde88!important;background:#ff9cde12!important}
 .mobile-menu .menu-item>span:first-of-type{color:#f3d8ed!important}
 @media(max-width:600px){.floating-menu-button{border-color:#ff9cde55!important}}
+
+
+/* Final MALADH server palette — no green */
+.site-announcement{
+  background:linear-gradient(90deg,#08060d 0%,#1b1026 28%,#352044 50%,#1b1026 72%,#08060d 100%)!important;
+  border-bottom:1px solid #ff9cde55!important;
+  box-shadow:0 5px 24px #0008,0 0 28px #ff9cde12!important;
+}
+.site-announcement,.announcement-track{min-height:42px!important}
+.announcement-track span{
+  color:#ffcfec!important;
+  text-shadow:0 0 16px #ff9cde44!important;
+}
+.site-announcement{--announcement-color:#ff9cde!important}
+.floating-menu-button{
+  border-color:#ff9cde55!important;
+  color:#fff8ff!important;
+  background:linear-gradient(145deg,#2b1738,#120b18)!important;
+  box-shadow:0 14px 40px #000b,0 0 28px #ff9cde22!important;
+}
+.floating-menu-button:hover{
+  border-color:#ff9cdeaa!important;
+  box-shadow:0 18px 46px #000c,0 0 32px #ff9cde3d!important;
+}
+.reviews-head .eyebrow,.review-stars{color:#ff9cde!important}
+.review-card{
+  border-color:#ff9cde35!important;
+  background:linear-gradient(145deg,#352044,#17101f)!important;
+}
+.review-card:hover{border-color:#ff9cde77!important}
+.review-avatar{background:linear-gradient(135deg,#ff9cde,#a86fdf)!important}
+.primary{background:linear-gradient(135deg,#ff9cde,#a86fdf)!important;color:#180b1c!important}
