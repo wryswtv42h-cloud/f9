@@ -1115,53 +1115,24 @@ async function apiRequest(url, options) {
 }
 
 const GAME_CATALOG = {
-  "أونو": {
-    min: 2,
-    max: 8,
-    desc: "أونو — أوراق، ألوان، أرقام وأدوار متزامنة."
-  },
-
-  "بلوت": {
-    min: 4,
-    max: 4,
-    desc: "بلوت — طاولة أربع لاعبين مع مقاعد ثابتة."
-  },
-
-  "جاكارو": {
-    min: 2,
-    max: 4,
-    desc: "جاكارو — طاولة ومسارات وحركة أحجار."
-  },
-
-  "لودو": {
-    min: 2,
-    max: 4,
-    desc: "لودو — لوحة أربع ألوان وحركة أحجار."
-  },
-
-  "مافيا": {
-    min: 4,
-    max: 16,
-    desc: "مافيا — أدوار سرية، ليل ونهار وتصويت."
-  },
-
-  "مونوبولي": {
-    min: 2,
-    max: 6,
-    desc: "مونوبولي — شراء وتداول وإدارة أموال."
-  },
-
-  "كود نيمز": {
-    min: 2,
-    max: 10,
-    desc: "كود نيمز — فريقان، قائد تلميحات وتخمين كلمات."
-  },
-
-  "رووليت": {
-    min: 2,
-    max: 12,
-    desc: "رووليت — جولات سريعة بنظام نقاط."
-  }
+  "أونو":{min:2,max:8,desc:"أوراق وألوان وأدوار متزامنة."},
+  "بلوت":{min:4,max:4,desc:"طاولة أربع لاعبين."},
+  "جاكارو":{min:2,max:4,desc:"مسارات وأحجار ونرد."},
+  "لودو":{min:2,max:4,desc:"لوحة وحركة أحجار."},
+  "مافيا":{min:4,max:16,desc:"أدوار سرية وليل ونهار وتصويت."},
+  "مونوبولي":{min:2,max:6,desc:"شراء وممتلكات وأموال."},
+  "كود نيمز":{min:4,max:10,desc:"فريقان وقائد تلميحات وتخمين كلمات."},
+  "رووليت":{min:2,max:12,desc:"جولات حظ سريعة ونقاط."},
+  "اكس":{min:2,max:2,desc:"إكس وأو الكلاسيكية."},
+  "حجره":{min:2,max:2,desc:"حجر ورق مقص بجولات."},
+  "زر":{min:2,max:8,desc:"اضغط واختر ونافس بسرعة."},
+  "كت":{min:2,max:8,desc:"تحديات قصيرة سريعة."},
+  "بومب":{min:3,max:12,desc:"لا تلمس الاختيار الخطأ."},
+  "فخ":{min:2,max:12,desc:"اختيارات مخفية وفخاخ."},
+  "هايد":{min:3,max:12,desc:"اختبئ وغيّر مكانك."},
+  "عواصم":{min:2,max:8,desc:"أسئلة عواصم ونقاط."},
+  "شركة":{min:2,max:8,desc:"جولات تنافسية سريعة."},
+  "سالفة":{min:2,max:12,desc:"أسئلة ومواقف وتفاعل المجتمع."}
 };
 
 function deviceClass() {
@@ -1391,29 +1362,32 @@ function renderGameBoard(game, room) {
       </button>
     `;
   } else if (game === "كود نيمز") {
+    const isLeader = room.gameState?.viewerRole === "قائد";
+    const team = room.gameState?.viewerTeam || "";
+    const clue = room.gameState?.clue;
     h = `
+      <div class="codenames-head">
+        <div><span class="eyebrow">CODE NAMES</span><h2>فريقك: ${esc(team)}</h2><p class="muted">دورك: ${esc(room.gameState?.viewerRole || "مخمّن")}</p></div>
+        <div class="codenames-clue">${clue ? "<b>التلميح:</b> "+esc(clue.text)+" · "+clue.count : "بانتظار التلميح..."}</div>
+      </div>
       <div class="codenames-grid">
-        ${
-          (gs.words || []).map((w, i) => `
-            <button
-              class="word-card"
-              onclick="sendGameMove('${room.id}',{type:'guess',index:${i}})"
-            >
-              ${esc(w)}
-            </button>
-          `).join("")
-        }
+        ${(gs.words||[]).map((w,i)=>`
+          <button class="word-card ${gs.revealed?.[i] ? "revealed-"+esc(gs.revealed[i]) : ""}" ${gs.revealed?.[i]||isLeader ? "disabled" : ""} onclick="sendGameMove('${room.id}',{type:'guess',index:${i}})">
+            <span>${esc(w)}</span>
+            ${gs.revealed?.[i] ? "<small>"+esc(gs.revealed[i])+"</small>" : ""}
+          </button>`).join("")}
       </div>
-
-      <div class="game-actions">
-        <button
-          class="primary"
-          onclick="sendGameMove('${room.id}',{type:'clue',text:prompt('التلميح')||'',count:Number(prompt('عدد الكلمات'))||0})"
-        >
-          إعطاء تلميح
-        </button>
-      </div>
+      ${isLeader ? `
+        <form id="codenames-clue-form" class="game-actions">
+          <input id="codenames-clue-text" class="full" maxlength="40" placeholder="التلميح">
+          <input id="codenames-clue-count" class="full" type="number" min="1" max="9" placeholder="عدد الكلمات">
+          <button class="primary" type="submit">إعطاء التلميح</button>
+        </form>` : ""}
     `;
+    setTimeout(()=>{
+      const f=$("#codenames-clue-form");
+      if(f)f.onsubmit=e=>{e.preventDefault();sendGameMove(room.id,{type:"clue",text:$("#codenames-clue-text").value,count:Number($("#codenames-clue-count").value)||0})};
+    },0);
   } else if (game === "مافيا") {
     h = `
       <div class="generic-game">
@@ -1522,8 +1496,11 @@ function renderGameBoard(game, room) {
     `;
   } else {
     h = `
-      <div class="generic-game">
+      <div class="generic-game quick-game">
+        <span class="eyebrow">MLD QUICK GAME</span>
         <h2>${esc(game)}</h2>
+        <p class="muted">${esc(GAME_CATALOG[game]?.desc||"جولة سريعة")}</p>
+        <div class="quick-pad">${[1,2,3,4,5,6,7,8,9].map(n=>`<button class="word-card" onclick="sendGameMove('${room.id}',{type:'pick',number:${n}})">${n}</button>`).join("")}</div>
       </div>
     `;
   }
