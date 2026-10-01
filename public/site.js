@@ -1,5 +1,5 @@
 "use strict";
-const $=s=>document.querySelector(s),app=$("#app"),modal=$("#modal"),mc=$("#modal-content"),menu=$("#menu"),mobile=$("#mobile-menu");
+const $=s=>document.querySelector(s),app=$("#app"),modal=$("#modal"),mc=$("#modal-content"),menu=$("#menu"),mobile=$("#mobile-menu"),adminLink=document.querySelector('[data-page="admin"]');
 const fallback="https://cdn.discordapp.com/attachments/1398447508463550578/1550544040401829888/IMG_0577.jpg?ex=6ab54faa&is=6ab3fe2a&hm=a259fd1df3cbee263e02c29b2d4e9cee75036f43cef9fe85ad23d79573c0c23f";
 const esc=v=>String(v??"").replace(/[&<>"']/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c]));
 const num=v=>new Intl.NumberFormat("ar-SA").format(Number(v)||0);
@@ -72,5 +72,5 @@ menu.onclick=()=>{const o=mobile.classList.toggle("open");menu.setAttribute("ari
 $("#close").onclick=closeModal;modal.onclick=e=>{if(e.target===modal)closeModal()};document.onkeydown=e=>{if(e.key==="Escape")closeModal()};
 async function loadSettings(){try{const d=await api("/api/settings"),x=$("#announcement");if(x){x.textContent=d.announcement||"";x.style.setProperty("--announcement-color",d.announcementColor||"#ff9cdc")}}catch{}}
 async function server(){try{const d=await api("/api/public/server");const n=$("#server-name"),c=$("#server-count"),s=$("#server-status");if(n)n.textContent=d.name||"MLD";if(c)c.textContent=num(d.memberCount);if(s){s.textContent="● متصل";s.className="online"}const set=(id,v,l)=>{const x=$(id);if(x)x.innerHTML=num(v)+"<small>"+l+"</small>"};set("#hs-members",d.memberCount,"عضو");set("#hs-online",d.online,"متصل الآن");set("#hs-visits",d.visits,"زيارة");if($("#home-live"))$("#home-live").textContent="آخر تحديث: "+new Date().toLocaleTimeString("ar-SA");if(d.invite)$("#invite-mobile").href=d.invite}catch{}}
-async function boot(){try{const d=await api("/api/auth/me");if(d.user)me=d.user}catch{}const adminLink=document.querySelector('[data-page="admin"]');if(adminLink)adminLink.style.display=me&&["owner","admin"].includes(me.role)?"":"none";$("#year").textContent=new Date().getFullYear();await loadSettings();await server();page((location.hash||"#home").slice(1));setInterval(server,15000);setInterval(loadSettings,30000)}
+async function boot(){try{const d=await api("/api/auth/me");if(d.user)me=d.user}catch{}if(adminLink)adminLink.style.display=me&&["owner","admin"].includes(me.role)?"":"none";$("#year").textContent=new Date().getFullYear();await loadSettings();await server();page((location.hash||"#home").slice(1));setInterval(server,15000);setInterval(loadSettings,30000)}
 boot();
