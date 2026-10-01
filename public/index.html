@@ -1,39 +1,65 @@
 <!doctype html>
 <html lang="ar" dir="rtl">
 <head>
-<meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
-<title>MLD · Community</title>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
 <meta name="theme-color" content="#0b0712">
-<link rel="preconnect" href="https://fonts.googleapis.com">
-<link href="https://fonts.googleapis.com/css2?family=Cairo:wght@400;500;600;700;800;900&display=swap" rel="stylesheet">
-<link rel="stylesheet" href="/style.css?v=1">
+<meta name="description" content="MLD Community — مجتمعك، بأسلوب مختلف.">
+<title>MLD · Community</title>
+<link rel="icon" href="https://cdn.discordapp.com/attachments/1398447508463550578/1550544040401829888/IMG_0577.jpg?ex=6ab54faa&is=6ab3fe2a&hm=a259fd1df3cbee263e02c29b2d4e9cee75036f43cef9fe85ad23d79573c0c23f">
+<link rel="preconnect" href="https://cdn.discordapp.com">
+<link rel="stylesheet" href="/style.css?v=2">
 </head>
 <body>
-<div id="intro"><div class="intro-card"><div class="avatar">MLD</div><h1>أهلاً بكم في ملاذ</h1><p>MLD · Community</p></div></div>
-<div class="site-announcement"><span>✦</span><b>MLD · Community</b><span>مجتمع ملاذ — أهلاً بكم جميعاً</span></div>
-<header class="header">
- <button class="menu-btn" id="menuBtn" aria-label="القائمة"><i></i><i></i><i></i></button>
- <a class="brand" href="#home"><div class="brand-avatar">MLD</div><div><strong>MLD</strong><small>Community</small></div></a>
- <div class="header-actions"><a class="ghost" href="#members">الأعضاء</a><a class="primary" href="#login">تسجيل الدخول</a></div>
-</header>
-<nav id="menu" class="menu">
- <a href="#home">الرئيسية</a><a href="#members">الأعضاء</a><a href="#roles">الرتب</a><a href="#games">الألعاب</a><a href="#groups">القروبات</a><a href="#cinema">السينما</a><a href="#reviews">الآراء</a><a href="#login">الحساب</a>
+<div class="glow g1"></div><div class="glow g2"></div>
+<header class="topbar">
+<nav class="wrap nav">
+<a class="brand" href="#top" aria-label="MLD Community">
+<img src="https://cdn.discordapp.com/attachments/1398447508463550578/1550544040401829888/IMG_0577.jpg?ex=6ab54faa&is=6ab3fe2a&hm=a259fd1df3cbee263e02c29b2d4e9cee75036f43cef9fe85ad23d79573c0c23f" alt="MLD">
+<span><b>MLD</b><small>COMMUNITY INTELLIGENCE</small></span>
+</a>
+<div class="desktop-nav">
+<button type="button" data-view="members">الأعضاء</button>
+<button type="button" data-view="top">TOP</button>
+<button type="button" data-view="roles">الرتب</button>
+<button type="button" data-view="message">رسالة خاصة</button>
+<a id="invite" class="invite" target="_blank" rel="noopener">انضم للسيرفر</a>
+</div>
+<button id="menu" class="menu" type="button" aria-label="القائمة" aria-expanded="false">☰</button>
 </nav>
-<main id="app">
+<div id="mobile-menu" class="mobile-menu">
+<button type="button" data-view="members">الأعضاء</button><button type="button" data-view="top">TOP</button>
+<button type="button" data-view="roles">الرتب القيادية</button><button type="button" data-view="message">إرسال رسالة خاصة</button>
+<a id="invite-mobile" class="invite" target="_blank" rel="noopener">انضم للسيرفر</a>
+</div>
+</header>
+<main id="top" class="wrap">
 <section class="hero">
- <div class="hero-copy"><span class="eyebrow">MLD · COMMUNITY</span><h1>مجتمعك، <em>بأسلوبك.</em></h1><p>واجهة ملاذ الرسمية — مجتمع، ألعاب، قروبات وتجربة متكاملة مرتبطة بسيرفر الديسكورد.</p>
- <div class="hero-buttons"><a class="primary big" href="#members">استكشف المجتمع</a><a class="secondary big" href="#games">الألعاب</a></div></div>
- <div class="hero-orb"><div class="orb-ring"></div><div class="hero-avatar">MLD</div><span>ملاذ</span></div>
+<div class="hero-copy">
+<span class="pill">● LIVE COMMUNITY SYSTEM</span>
+<h1>مجتمع <span>MLD</span><br>بشكل مختلف.</h1>
+<p>أعضاء، رتب، توب، ورسائل خاصة في لوحة فخمة وسريعة تتحدث تلقائيًا.</p>
+<div class="hero-actions"><a class="primary" href="#directory">ابدأ الاستكشاف ←</a><span class="creator">صُنع بواسطة <b>فهد المطيري</b></span></div>
+</div>
+<div class="hero-art"><i></i><i></i><img src="https://cdn.discordapp.com/attachments/1398447508463550578/1550544040401829888/IMG_0577.jpg?ex=6ab54faa&is=6ab3fe2a&hm=a259fd1df3cbee263e02c29b2d4e9cee75036f43cef9fe85ad23d79573c0c23f" alt="MLD"></div>
 </section>
-<section class="stats" id="stats"><div><b id="serverName">MLD · Community</b><small>السيرفر</small></div><div><b id="membersCount">—</b><small>الأعضاء</small></div><div><b id="onlineCount">—</b><small>متصل الآن</small></div><div><b id="visitsCount">—</b><small>الزيارات</small></div></section>
-<section id="content"><div class="section-title"><span>LIVE</span><h2>كل شيء في مكان واحد</h2><p>استكشف أقسام مجتمع MLD من الواجهة الرئيسية.</p></div><div class="cards">
-<a href="#members" class="card"><b>👥 الأعضاء</b><span>تصفح أعضاء السيرفر والرتب والحالة.</span></a>
-<a href="#games" class="card"><b>🎮 الألعاب</b><span>جلسات وألعاب المجتمع.</span></a>
-<a href="#groups" class="card"><b>◈ القروبات</b><span>أنشئ وانضم إلى قروبات المجتمع.</span></a>
-<a href="#cinema" class="card"><b>◉ السينما</b><span>تجربة مشاهدة جماعية.</span></a>
-</div></section>
-<section class="live-panel"><div><span class="dot"></span><b>حالة الاتصال</b><p id="statusText">جاري جلب بيانات Discord...</p></div><div class="owner"><div class="mini-avatar">ف</div><span>المالك<br><b>فهد المطيري</b></span></div></section>
+<section class="server-strip">
+<div><small>السيرفر</small><strong id="server-name">MLD</strong></div>
+<div><small>المنشئ</small><strong>فهد المطيري</strong></div>
+<div><small>الأعضاء</small><strong id="server-count">—</strong></div>
+<div><small>الحالة</small><strong id="server-status" class="online">● متصل</strong></div>
+</section>
+<section id="directory" class="panel">
+<div class="section-head">
+<div><p class="eyebrow">MLD DIRECTORY</p><h2 id="view-title">أعضاء المجتمع</h2><p id="subtitle" class="muted">كل الأعضاء والبيانات تتحدث تلقائيًا.</p></div>
+<div id="search-wrap" class="search-wrap"><span>⌕</span><input id="search" placeholder="ابحث بالاسم أو اليوزر..." autocomplete="off" aria-label="البحث عن عضو"></div>
+</div>
+<div id="status" class="status">جاري التحميل...</div>
+<div id="content" class="grid"></div>
+</section>
 </main>
-<footer><div class="footer-brand"><div class="brand-avatar">MLD</div><b>MLD · Community</b></div><p>© MLD · Community — جميع الحقوق محفوظة</p><div class="social"><a href="https://www.tiktok.com/@jj51" target="_blank">TikTok</a><a href="https://www.instagram.com/li5uxi" target="_blank">Instagram</a></div></footer>
-<script src="/site.js?v=1"></script>
-</body></html>
+<div id="modal" class="modal hidden" role="dialog" aria-modal="true"><div class="modal-card"><button id="close" class="close" type="button" aria-label="إغلاق">×</button><div id="modal-content"></div></div></div>
+<footer class="wrap footer">MLD · <span id="year"></span> · Community Intelligence</footer>
+<script src="/site.js?v=2"></script>
+</body>
+</html>
