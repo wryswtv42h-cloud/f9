@@ -308,7 +308,13 @@ app.post("/api/auth/logout",(req,res)=>{const token=req.headers.cookie?.match(/(
 
 // MALADH platform modules (runtime store; use durable database before production scale).
 const platform = {
-  publicChat: [], reviews: [], jokes: [], vents: [], stories: [],
+  publicChat: [], reviews: [
+{id:"demo-r1",user:{username:"Luna_7",displayName:"لونا",role:"member"},text:"الموقع صار يجمع كل شيء في مكان واحد، خصوصًا جلسات الألعاب.",rating:5,createdAt:nowIso(),deleted:false},
+{id:"demo-r2",user:{username:"Saif_x",displayName:"سيف",role:"member"},text:"تصميم MALADH مرتب وسريع على الجوال، وحبيت فكرة الجلسات.",rating:5,createdAt:nowIso(),deleted:false},
+{id:"demo-r3",user:{username:"N0or",displayName:"نور",role:"member"},text:"فكرة مركز المجتمع والقروبات مرة حلوة، ننتظر باقي الأنظمة.",rating:4,createdAt:nowIso(),deleted:false},
+{id:"demo-r4",user:{username:"Rakan99",displayName:"راكان",role:"member"},text:"واجهة الأعضاء والرتب واضحة وسهلة، خصوصًا البحث.",rating:5,createdAt:nowIso(),deleted:false},
+{id:"demo-r5",user:{username:"Jouri",displayName:"جوري",role:"member"},text:"أكثر شيء عجبني أن كل شيء عربي ومناسب للمجتمع.",rating:5,createdAt:nowIso(),deleted:false}
+], jokes: [], vents: [], stories: [],
   conversations: new Map(), tickets: new Map(), applications: new Map(), rooms: new Map(), groups: new Map(), audit: []
 };
 const newId = () => crypto.randomUUID();
