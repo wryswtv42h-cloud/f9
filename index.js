@@ -44,6 +44,41 @@ const JOKES_FILE = path.join(__dirname, "jokes.json");
 const REVIEWS_FILE = path.join(__dirname, "reviews.json");
 const STORIES_FILE = path.join(__dirname, "stories.json");
 const CHAT_FILE = path.join(__dirname, "chat.json");
+const ANNOUNCEMENT_FILE = path.join(__dirname, "announcement.json");
+const broadcastJobs = new Map();
+function readAnnouncement(){ return readJsonFile(ANNOUNCEMENT_FILE,{enabled:false,text:"",color:"#ff9cdc"}); }
+function writeAnnouncement(v){ writeJsonFile(ANNOUNCEMENT_FILE,v); }
+function broadcastSafe(job){return {id:job.id,status:job.status,total:job.total,sent:job.sent,failed:job.failed,startedAt:job.startedAt,finishedAt:job.finishedAt||null,lastError:job.lastError||null};}
+async function runBroadcast(job,message,titleText){
+  try{
+    const members=await getAllMembers(await getGuild());
+    const targets=members.filter(m=>!m.user.bot);
+    job.total=targets.length; job.status="sending";
+    const embed=new EmbedBuilder().setTitle(titleText||"رسالة من MLD").setDescription(message).setColor("#ff9cdc").setFooter({text:"MLD Community"}).setTimestamp();
+    let index=0;
+    const worker=async()=>{
+      while(true){
+        const i=index++;
+        if(i>=targets.length)return;
+        const member=targets[i];
+        try{
+          await member.send({embeds:[embed]});
+          job.sent++;
+        }catch(error){
+          job.failed++;
+          if(job.failed<=10)job.lastError=String(error?.message||"تعذر الإرسال");
+        }
+      }
+    };
+    await Promise.all([worker(),worker(),worker()]);
+    job.status="completed";job.finishedAt=new Date().toISOString();
+    audit("broadcast.completed",{broadcastId:job.id,total:job.total,sent:job.sent,failed:job.failed},job.actor);
+  }catch(error){
+    job.status="failed";job.finishedAt=new Date().toISOString();job.lastError=String(error?.message||"تعذر تنفيذ البرودكاست");
+    audit("broadcast.failed",{broadcastId:job.id,error:job.lastError},job.actor);
+  }
+}
+
 function readChat(){ return readJsonFile(CHAT_FILE,{general:{id:"general",name:"الشات العام",type:"general",ownerId:null,members:[],messages:[]},rooms:[]}); }
 function writeChat(v){ writeJsonFile(CHAT_FILE,v); }
 function chatAccount(req){ return getAuthAccountFromReq(req); }
@@ -362,6 +397,40 @@ app.get("/api/owner/dashboard",async(req,res)=>{
   let online=0;
   try{ online=(await getAllMembers(await getGuild())).filter(m=>m.presence?.status&&m.presence.status!=="offline").length; }catch{}
   res.json({stats:{accounts:accounts.length,tickets:tickets.length,openTickets:tickets.filter(t=>t.status==="open").length,applications:applications.length,pendingApplications:applications.filter(x=>x.status==="pending").length,online},owner:OWNER_DATA});
+});
+
+app.get("/api/announcement",(req,res)=>res.json(readAnnouncement()));
+app.patch("/api/owner/announcement",(req,res)=>{
+  const a=getAuthAccountFromReq(req);
+  if(a?.role!=="owner")return res.status(403).json({error:"هذه العملية للأونر فقط"});
+  const current=readAnnouncement();
+  const enabled=Boolean(req.body?.enabled);
+  const text=cleanText(req.body?.text,500);
+  const color=/^#[0-9a-fA-F]{6}$/.test(String(req.body?.color||""))?String(req.body.color):current.color||"#ff9cdc";
+  if(enabled&&!text)return res.status(400).json({error:"اكتب نص الإعلان أولًا"});
+  const next={enabled,text,color,updatedAt:new Date().toISOString(),updatedBy:a.username};
+  writeAnnouncement(next);audit("announcement.updated",{enabled,textLength:text.length,color},a);
+  res.json({announcement:next});
+});
+app.get("/api/owner/broadcast/status/:id",(req,res)=>{
+  const a=getAuthAccountFromReq(req);
+  if(a?.role!=="owner")return res.status(403).json({error:"هذه العملية للأونر فقط"});
+  const job=broadcastJobs.get(req.params.id);
+  if(!job)return res.status(404).json({error:"البرودكاست غير موجود"});
+  res.json({broadcast:broadcastSafe(job)});
+});
+app.post("/api/owner/broadcast",async(req,res)=>{
+  const a=getAuthAccountFromReq(req);
+  if(a?.role!=="owner")return res.status(403).json({error:"البرودكاست للأونر فقط"});
+  const message=cleanText(req.body?.message,2000),titleText=cleanText(req.body?.title,120)||"رسالة من MLD";
+  if(!message)return res.status(400).json({error:"اكتب رسالة البرودكاست"});
+  const active=[...broadcastJobs.values()].find(x=>["queued","sending"].includes(x.status));
+  if(active)return res.status(409).json({error:"يوجد برودكاست قيد الإرسال الآن",broadcast:broadcastSafe(active)});
+  const job={id:crypto.randomUUID(),status:"queued",total:0,sent:0,failed:0,startedAt:new Date().toISOString(),actor:a};
+  broadcastJobs.set(job.id,job);
+  audit("broadcast.started",{broadcastId:job.id,title:titleText},a);
+  runBroadcast(job,message,titleText);
+  res.json({ok:true,broadcast:broadcastSafe(job)});
 });
 
 app.get("/api/owner/accounts",async(req,res)=>{
