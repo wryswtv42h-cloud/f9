@@ -3,10 +3,10 @@ const $=s=>document.querySelector(s),content=$("#content"),status=$("#status"),s
 function setStatus(x){status.textContent=x}function openModal(){modal.classList.remove("hidden");document.body.classList.add("modal-open")}function closeModal(){modal.classList.add("hidden");document.body.classList.remove("modal-open")}function bind(){document.querySelectorAll("[data-member]").forEach(x=>x.onclick=()=>openMember(x.dataset.member));document.querySelectorAll("[data-role]").forEach(x=>x.onclick=()=>openRole(x.dataset.role))}
 function card(m){return `<article class="card" data-member="${esc(m.id)}"><img src="${esc(avatar(m))}" onerror="this.src='${fallback}'"><div><h3>${esc(m.name)}</h3><p>@${esc(m.username||"")}</p><div class="roles">${(m.importantRoles||[]).map(r=>`<span class="role">${esc(r.name)}</span>`).join("")||`<span class="member-tag">عضو</span>`}</div></div><b>↗</b></article>`}function renderMembers(list){content.className="grid";content.innerHTML=list.length?list.map(card).join(""):`<div class="empty"><h3>لا توجد نتائج</h3><p>تأكد من تفعيل Server Members Intent.</p></div>`;bind()}
 async function renderReviews(){
-  if(view!=="home") return;
+  if(view!=="home" || ["review-text","review-rating"].includes(document.activeElement?.id)) return;
   searchWrap.style.display="none";title.textContent="آراء الناس";subtitle.textContent="آراء يضيفها أعضاء MLD بأنفسهم.";
   let list=[];try{const d=await fetch("/api/platform/reviews").then(r=>r.json());list=d.reviews||[]}catch(e){}
-  const shown=list.slice(0,3);
+  const start=list.length?Math.floor(Date.now()/5000)%list.length:0;const shown=list.length?[0,1,2].map(i=>list[(start+i)%list.length]):[];
   content.className="reviews-grid";
   content.innerHTML=shown.map((r,i)=>'<article class="review-card"><div class="review-top"><div class="review-avatar">'+esc((r.user?.displayName||"?").slice(0,1))+'</div><div><h3>'+esc(r.user?.displayName||r.user?.username||"عضو")+'</h3><p>@'+esc(r.user?.username||"")+'</p></div><span class="review-stars">'+("★".repeat(Number(r.rating)||5))+'</span></div><div class="review-rank">'+esc(r.user?.role||"عضو")+'</div><p class="review-text">“'+esc(r.text)+'”</p><small>رأي من مجتمع MLD · '+(i+1)+'/3</small></article>').join("")||'<article class="review-card"><h3>كن أول من يشارك رأيه</h3><p class="review-text">ما فيه آراء منشورة حتى الآن.</p></article>';
   const me=await fetch("/api/auth/me").then(r=>r.json()).catch(()=>({}));
