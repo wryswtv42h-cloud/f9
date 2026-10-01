@@ -2,15 +2,7 @@
 const $=s=>document.querySelector(s),content=$("#content"),status=$("#status"),search=$("#search"),searchWrap=$("#search-wrap"),modal=$("#modal"),box=$("#modal-content"),title=$("#view-title"),subtitle=$("#subtitle"),mobile=$("#mobile-menu");let view="home",all=[],roles=[],timer,refreshTimer,reviewsTimer,selected=null;const fallback="/logo.svg.JPG",esc=v=>String(v??"").replace(/[&<>"']/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c])),num=v=>new Intl.NumberFormat("ar-SA").format(Number(v)||0),avatar=m=>m?.avatar||fallback;
 function setStatus(x){status.textContent=x}function openModal(){modal.classList.remove("hidden");document.body.classList.add("modal-open")}function closeModal(){modal.classList.add("hidden");document.body.classList.remove("modal-open")}function bind(){document.querySelectorAll("[data-member]").forEach(x=>x.onclick=()=>openMember(x.dataset.member));document.querySelectorAll("[data-role]").forEach(x=>x.onclick=()=>openRole(x.dataset.role))}
 function card(m){return `<article class="card" data-member="${esc(m.id)}"><img src="${esc(avatar(m))}" onerror="this.src='${fallback}'"><div><h3>${esc(m.name)}</h3><p>@${esc(m.username||"")}</p><div class="roles">${(m.importantRoles||[]).map(r=>`<span class="role">${esc(r.name)}</span>`).join("")||`<span class="member-tag">عضو</span>`}</div></div><b>↗</b></article>`}function renderMembers(list){content.className="grid";content.innerHTML=list.length?list.map(card).join(""):`<div class="empty"><h3>لا توجد نتائج</h3><p>تأكد من تفعيل Server Members Intent.</p></div>`;bind()}
-const defaultReviews=[
-  {name:"محمد",username:"@m7md",rank:"عضو",text:"الموقع مرتب وسريع، وكل معلومات السيرفر قدامي بشكل واضح."},
-  {name:"سارة",username:"@sara",rank:"عضو",text:"التصميم فخم جدًا خصوصًا على الجوال، والأقسام صارت أوضح."},
-  {name:"عبدالله",username:"@abdullah",rank:"Staff",text:"فكرة المنصة تجمع المجتمع كله بمكان واحد، وهذا اللي يميز MLD."},
-  {name:"نواف",username:"@nawaf",rank:"عضو",text:"أحببت فكرة الألعاب والجلسات، والواجهة خفيفة وما تتعب."},
-  {name:"ريم",username:"@reem",rank:"عضو",text:"واجهة جميلة جدًا، والألوان متناسقة مع هوية MLD."},
-  {name:"خالد",username:"@khaled",rank:"عضو",text:"أفضل شيء أن بيانات السيرفر تتحدث قدامي بدون تعقيد."}
-];
-async function renderReviews(){
+function renderReviews(){
   if(view!=="home") return;
   searchWrap.style.display="none";title.textContent="آراء الناس";subtitle.textContent="آراء يضيفها أعضاء MLD بأنفسهم.";
   let list=[];try{const d=await fetch("/api/platform/reviews").then(r=>r.json());list=d.reviews||[]}catch(e){}
@@ -86,7 +78,7 @@ async function renderAdmin(){const me=await fetch("/api/auth/me").then(r=>r.json
  try{
   if(feature==="إدارة الأعضاء"){
    const d=await apiRequest("/api/platform/owner/users");
-   content.innerHTML='<div class="platform-card"><h3>إدارة الحسابات والصلاحيات</h3><div class="platform-feed">'+(d.users||[]).map(u=>'<article class="feed-card"><b>'+esc(u.displayName||u.username)+'</b><p class="muted">@'+esc(u.username)+' · '+esc(u.discordUsername||"بدون ديسكورد")+'</p><select class="full" id="role-'+esc(u.username)+'"><option value="member" '+(u.role==="member"?"selected":"")+'>عضو</option><option value="admin" '+(u.role==="admin"?"selected":"")+'>إداري</option><option value="owner" '+(u.role==="owner"?"selected":"")+'>أونر</option></select><button class="primary role-save" data-user="'+esc(u.username)+'">حفظ الصلاحية</button></article>').join("")+'</div></div>';
+   content.innerHTML='<div class="platform-card"><h3>إدارة الحسابات والصلاحيات</h3><div class="platform-feed">'+(d.users||[]).map(u=>'<article class="feed-card"><b>'+esc(u.displayName||u.username)+'</b><p class="muted">@'+esc(u.username)+' · '+esc(u.discordUsername||"بدون ديسكورد")+'</p><select class="full" id="role-'+esc(u.username)+'"><option value="member" '+(u.role==="member"?"selected":"")+'>عضو</option><option value="admin" '+(u.role==="admin"?"selected":"")+'>إداري</option></select><button class="primary role-save" data-user="'+esc(u.username)+'">حفظ الصلاحية</button></article>').join("")+'</div></div>';
    content.querySelectorAll(".role-save").forEach(btn=>btn.onclick=async()=>{try{await apiRequest("/api/platform/owner/users/"+encodeURIComponent(btn.dataset.user)+"/role",{method:"PATCH",body:JSON.stringify({role:$("#role-"+btn.dataset.user).value})});setStatus("تم تحديث الصلاحية ✓");await renderAdmin()}catch(err){setStatus(err.message)}});return;
   }
   if(feature==="فتح السجلات"){
