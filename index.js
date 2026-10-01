@@ -33,13 +33,116 @@ const client = new Client({
 const app = express();
 app.disable("x-powered-by");
 app.use(cors());
-app.use(express.json({ limit: "20kb" }));
+app.use(express.json({ limit: "200kb" }));
 app.use(express.static(path.join(__dirname, "public")));
 
 const ACCOUNTS_FILE = path.join(__dirname, "accounts.json");
 const TICKETS_FILE = path.join(__dirname, "tickets.json");
 const AUDIT_LOG_FILE = path.join(__dirname, "audit-logs.json");
 const DM_LOG_FILE = path.join(__dirname, "dm-logs.json");
+const JOKES_FILE = path.join(__dirname, "jokes.json");
+const REVIEWS_FILE = path.join(__dirname, "reviews.json");
+const STORIES_FILE = path.join(__dirname, "stories.json");
+function readContent(file){ return readJsonFile(file,[]); }
+function writeContent(file,value){ writeJsonFile(file,value); }
+function contentActor(req){ return getAuthAccountFromReq(req); }
+function canManageContent(a){ return !!a && a.role === "owner"; }
+function cleanText(v,max){ return String(v??"").trim().slice(0,max); }
+function publicContent(item){
+  const {status, ...rest}=item;
+  return rest;
+}
+function visibleContent(req,file){
+  const a=contentActor(req);
+  const all=readContent(file);
+  return a?.role==="owner" ? all : all.filter(x=>x.status==="published");
+}
+
+app.get("/api/jokes",(req,res)=>{
+  const items=visibleContent(req,JOKES_FILE);
+  res.json({jokes:items});
+});
+app.post("/api/jokes",(req,res)=>{
+  const a=contentActor(req); if(!a)return res.status(401).json({error:"سجل الدخول أولًا"});
+  const text=cleanText(req.body?.text,3000), category=cleanText(req.body?.category,60)||"عام";
+  if(!text)return res.status(400).json({error:"اكتب النكتة"});
+  const items=readContent(JOKES_FILE);
+  const item={id:crypto.randomUUID(),text,category,authorId:a.id,authorName:a.username,status:a.role==="owner"?"published":"pending",createdAt:new Date().toISOString(),updatedAt:null};
+  items.unshift(item);writeContent(JOKES_FILE,items);audit("joke.created",{jokeId:item.id,status:item.status},a);
+  res.json({joke:publicContent(item)});
+});
+app.patch("/api/jokes/:id",(req,res)=>{
+  const a=contentActor(req); if(!canManageContent(a))return res.status(403).json({error:"إدارة النكت للأونر فقط"});
+  const items=readContent(JOKES_FILE),item=items.find(x=>x.id===req.params.id); if(!item)return res.status(404).json({error:"النكتة غير موجودة"});
+  if(req.body?.text!==undefined)item.text=cleanText(req.body.text,3000);
+  if(req.body?.category!==undefined)item.category=cleanText(req.body.category,60)||"عام";
+  if(req.body?.status!==undefined)item.status=["published","pending"].includes(req.body.status)?req.body.status:item.status;
+  item.updatedAt=new Date().toISOString();writeContent(JOKES_FILE,items);audit("joke.updated",{jokeId:item.id,status:item.status},a);res.json({joke:item});
+});
+app.delete("/api/jokes/:id",(req,res)=>{
+  const a=contentActor(req);if(!canManageContent(a))return res.status(403).json({error:"حذف النكت للأونر فقط"});
+  const items=readContent(JOKES_FILE),i=items.findIndex(x=>x.id===req.params.id);if(i<0)return res.status(404).json({error:"النكتة غير موجودة"});
+  const [item]=items.splice(i,1);writeContent(JOKES_FILE,items);audit("joke.deleted",{jokeId:item.id},a);res.json({ok:true});
+});
+
+app.get("/api/reviews",(req,res)=>{
+  const items=visibleContent(req,REVIEWS_FILE);
+  res.json({reviews:items});
+});
+app.post("/api/reviews",(req,res)=>{
+  const a=contentActor(req);if(!a)return res.status(401).json({error:"سجل الدخول أولًا"});
+  const text=cleanText(req.body?.text,1200);if(!text)return res.status(400).json({error:"اكتب رأيك"});
+  const rating=Math.min(5,Math.max(1,Number(req.body?.rating)||5));
+  const items=readContent(REVIEWS_FILE);
+  const item={id:crypto.randomUUID(),text,rating,authorId:a.id,authorName:a.username,status:a.role==="owner"?"published":"pending",createdAt:new Date().toISOString(),updatedAt:null};
+  items.unshift(item);writeContent(REVIEWS_FILE,items);audit("review.created",{reviewId:item.id,status:item.status},a);res.json({review:publicContent(item)});
+});
+app.patch("/api/reviews/:id",(req,res)=>{
+  const a=contentActor(req);if(!canManageContent(a))return res.status(403).json({error:"إدارة الآراء للأونر فقط"});
+  const items=readContent(REVIEWS_FILE),item=items.find(x=>x.id===req.params.id);if(!item)return res.status(404).json({error:"الرأي غير موجود"});
+  if(req.body?.text!==undefined)item.text=cleanText(req.body.text,1200);
+  if(req.body?.rating!==undefined)item.rating=Math.min(5,Math.max(1,Number(req.body.rating)||5));
+  if(req.body?.status!==undefined)item.status=["published","pending"].includes(req.body.status)?req.body.status:item.status;
+  item.updatedAt=new Date().toISOString();writeContent(REVIEWS_FILE,items);audit("review.updated",{reviewId:item.id,status:item.status},a);res.json({review:item});
+});
+app.delete("/api/reviews/:id",(req,res)=>{
+  const a=contentActor(req);if(!canManageContent(a))return res.status(403).json({error:"حذف الآراء للأونر فقط"});
+  const items=readContent(REVIEWS_FILE),i=items.findIndex(x=>x.id===req.params.id);if(i<0)return res.status(404).json({error:"الرأي غير موجود"});
+  const [item]=items.splice(i,1);writeContent(REVIEWS_FILE,items);audit("review.deleted",{reviewId:item.id},a);res.json({ok:true});
+});
+
+app.get("/api/stories",(req,res)=>{
+  const items=visibleContent(req,STORIES_FILE);
+  res.json({stories:items});
+});
+app.get("/api/stories/:id",(req,res)=>{
+  const a=contentActor(req),item=readContent(STORIES_FILE).find(x=>x.id===req.params.id);
+  if(!item)return res.status(404).json({error:"القصة غير موجودة"});
+  if(item.status!=="published"&&a?.role!=="owner")return res.status(404).json({error:"القصة غير موجودة"});
+  res.json({story:item});
+});
+app.post("/api/stories",(req,res)=>{
+  const a=contentActor(req);if(!a)return res.status(401).json({error:"سجل الدخول أولًا"});
+  const title=cleanText(req.body?.title,180),text=cleanText(req.body?.text,100000),cover=cleanText(req.body?.cover,500);
+  if(!title||!text)return res.status(400).json({error:"أدخل عنوان القصة والنص"});
+  const items=readContent(STORIES_FILE);
+  const item={id:crypto.randomUUID(),title,text,cover,authorId:a.id,authorName:a.username,status:a.role==="owner"?"published":"pending",createdAt:new Date().toISOString(),updatedAt:null};
+  items.unshift(item);writeContent(STORIES_FILE,items);audit("story.created",{storyId:item.id,status:item.status},a);res.json({story:publicContent(item)});
+});
+app.patch("/api/stories/:id",(req,res)=>{
+  const a=contentActor(req);if(!canManageContent(a))return res.status(403).json({error:"إدارة القصص للأونر فقط"});
+  const items=readContent(STORIES_FILE),item=items.find(x=>x.id===req.params.id);if(!item)return res.status(404).json({error:"القصة غير موجودة"});
+  if(req.body?.title!==undefined)item.title=cleanText(req.body.title,180);
+  if(req.body?.text!==undefined)item.text=cleanText(req.body.text,100000);
+  if(req.body?.cover!==undefined)item.cover=cleanText(req.body.cover,500);
+  if(req.body?.status!==undefined)item.status=["published","pending"].includes(req.body.status)?req.body.status:item.status;
+  item.updatedAt=new Date().toISOString();writeContent(STORIES_FILE,items);audit("story.updated",{storyId:item.id,status:item.status},a);res.json({story:item});
+});
+app.delete("/api/stories/:id",(req,res)=>{
+  const a=contentActor(req);if(!canManageContent(a))return res.status(403).json({error:"حذف القصص للأونر فقط"});
+  const items=readContent(STORIES_FILE),i=items.findIndex(x=>x.id===req.params.id);if(i<0)return res.status(404).json({error:"القصة غير موجودة"});
+  const [item]=items.splice(i,1);writeContent(STORIES_FILE,items);audit("story.deleted",{storyId:item.id},a);res.json({ok:true});
+});
 const OWNER_DATA = { name: process.env.OWNER_DISPLAY_NAME || "فهد المطيري", discordUsername: process.env.OWNER_DISCORD_USERNAME || "w4px", discordId: process.env.OWNER_DISCORD_ID || "" };
 function readTickets(){try{return JSON.parse(fs.readFileSync(TICKETS_FILE,"utf8"));}catch{return [];}}
 function writeTickets(a){fs.writeFileSync(TICKETS_FILE,JSON.stringify(a,null,2));}
