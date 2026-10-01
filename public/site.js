@@ -30,6 +30,37 @@ async function finishSignup(){const st=$("#signup-status"),username=$("#signup-u
 function renderAccountLogged(u){searchWrap.style.display="none";title.textContent="حسابي";subtitle.textContent="تم تسجيل الدخول بنجاح.";content.className="account-grid";content.innerHTML='<div class="account-card account-ok"><p class="eyebrow">SIGNED IN</p><h3>'+esc(u.displayName||u.username)+'</h3><p class="muted">@'+esc(u.username)+' · '+esc(u.role)+'</p><button id="logout-btn" class="primary">تسجيل الخروج</button></div>';$("#logout-btn").onclick=async()=>{await fetch("/api/auth/logout",{method:"POST"});syncAdminMenu({authenticated:false});renderAccount()}}
 
 async function apiRequest(url,options){const r=await fetch(url,Object.assign({headers:{"Content-Type":"application/json"}},options||{}));const d=await r.json().catch(()=>({}));if(!r.ok)throw Error(d.error||"تعذر تنفيذ الطلب");return d}
+
+const GAME_CATALOG={
+ "أونو":{min:2,max:8,desc:"أونو — أوراق، ألوان، أرقام وأدوار متزامنة."},
+ "بلوت":{min:4,max:4,desc:"بلوت — طاولة أربع لاعبين مع مقاعد ثابتة."},
+ "جاكارو":{min:2,max:4,desc:"جاكارو — طاولة ومسارات وحركة أحجار."},
+ "لودو":{min:2,max:4,desc:"لودو — لوحة أربع ألوان وحركة أحجار."},
+ "مافيا":{min:4,max:16,desc:"مافيا — أدوار سرية، ليل ونهار وتصويت."},
+ "مونوبولي":{min:2,max:6,desc:"مونوبولي — شراء وتداول وإدارة أموال."},
+ "كود نيمز":{min:2,max:10,desc:"كود نيمز — فريقان، قائد تلميحات وتخمين كلمات."},
+ "رووليت":{min:2,max:12,desc:"رووليت — جولات سريعة بنظام نقاط."}
+};
+function deviceClass(){const w=innerWidth;const ua=navigator.userAgent;return /iPad|Tablet/i.test(ua)?"ipad":/Mobi|Android|iPhone/i.test(ua)?"mobile":w<900?"tablet":"desktop"}
+function gameShell(room,game,device){
+ const cfg=GAME_CATALOG[game]||{min:2,max:12,desc:"لعبة MLD"};
+ return '<div class="game-stage '+device+'"><div class="game-toolbar"><div><b>'+esc(game)+'</b><small>'+esc(cfg.desc)+'</small></div><span class="device-badge">'+device+'</span><button id="game-expand" class="primary">تكبير</button></div><div id="mld-game-board" class="mld-game-board"><div class="mld-table"><div class="mld-watermark">MALAZH<br><small>MLD • COMMUNITY</small></div><div id="game-ui" class="game-ui"></div></div></div><div class="game-info"><span>الجلسة: '+esc(room.title)+'</span><span>اللاعبون: '+room.participants.length+'/'+room.maxPlayers+'</span><span>المشاهدون: '+room.spectators.length+'</span></div></div>'
+}
+function renderGameBoard(game,room){
+ const ui=$("#game-ui"); if(!ui)return;
+ const cfg=GAME_CATALOG[game]||GAME_CATALOG["أونو"];
+ if(game==="كود نيمز")ui.innerHTML='<div class="codenames-grid">'+["بحر","قمر","ملاذ","نار","ملك","ورد","سيف","باب","ذهب","نجم","مفتاح","عين","كتاب","شمس","نهر","قصر"].map((w,i)=>'<button class="word-card team-'+(i%3)+'">'+w+'</button>').join("")+'</div><p class="muted">القائد يرى التوزيع السري، والمخمّنون يرون بطاقات التخمين فقط.</p>';
+ else if(game==="بلوت")ui.innerHTML='<div class="card-table"><div class="seat top">لاعب 2</div><div class="seat left">لاعب 3</div><div class="seat right">لاعب 4</div><div class="seat bottom">أنت</div><div class="deck">MLD<br><small>طاولة بلوت</small></div></div>';
+ else ui.innerHTML='<div class="generic-game"><div class="game-logo">MLD</div><h2>'+esc(game)+'</h2><p>'+esc(cfg.desc)+'</p><div class="game-actions"><button class="primary">ابدأ الجولة</button><button class="primary">جاهز ✓</button></div></div>';
+}
+async function openGameRoom(roomId,game){
+ const d=await apiRequest("/api/platform/rooms/"+roomId+"/state").catch(()=>null);
+ const room=d?.room||{id:roomId,title:game,participants:[],spectators:[],maxPlayers:GAME_CATALOG[game]?.max||12};
+ const device=deviceClass(); title.textContent=game;subtitle.textContent="اخترنا مقاس الطاولة حسب جهازك: "+device;
+ content.className="platform-view";content.innerHTML=gameShell(room,game,device);renderGameBoard(game,room);
+ $("#game-expand").onclick=()=>$("#mld-game-board").classList.toggle("expanded");
+}
+
 async function renderPlatformView(v){
  searchWrap.style.display="none";
  const cfg={chat:["الشات العام","محادثة المجتمع العامة"],conversations:["محادثاتي","محادثات خاصة وفردية وجماعية"],jokes:["النكت","شارك نكتة"],vent:["فضفضة","مساحة للمشاركة والتعبير"],stories:["القصص والمواقف","شارك قصة أو موقفًا"],games:["جلسات الألعاب","أنشئ جلسة أو انضم لجلسة مفتوحة"],groups:["القروبات","طلبات القروبات مرتبطة بموافقة الإدارة"],tickets:["التذاكر","افتح طلب دعم وتابع طلباتك"],applications:["التقديم للإدارة","قدّم طلبك وتابع حالته"]};
@@ -49,7 +80,7 @@ async function renderPlatformView(v){
    content.innerHTML='<div class="platform-card"><h3>إنشاء '+(v==="games"?"جلسة لعبة":"غرفة مشاهدة")+'</h3><input id="room-title" class="full" placeholder="اسم الجلسة أو الغرفة"><input id="room-game" class="full" placeholder="'+(v==="games"?"اسم اللعبة":"رابط رسمي للمحتوى المرخّص")+'"><button id="room-create" class="primary wide">إنشاء</button><p id="platform-status" class="muted"></p><h3>الجلسات المفتوحة</h3><div class="platform-feed"></div><p class="muted">غرف MLD تنظم المشاركة؛ تشغيل المحتوى نفسه يعتمد على مشغل المنصة المرخّصة وتوفره في منطقتك.</p></div>';
    const list=(d.rooms||[]).filter(r=>r.type===(v==="games"?"game":"cinema"));content.querySelector(".platform-feed").innerHTML=list.map(r=>'<article class="feed-card"><b>'+esc(r.title)+'</b><p>'+(v==="cinema"&&/^https:\/\//i.test(r.game||"")?'<a href="'+esc(r.game)+'" target="_blank" rel="noopener noreferrer">فتح المصدر المرخّص</a>':esc(r.game||""))+' · '+esc(r.owner)+' · '+r.participantsCount+' مشاركين</p><button class="primary" data-join="'+esc(r.id)+'">انضمام كلاعب</button><button class="primary" data-spectate="'+esc(r.id)+'">مشاهدة</button></article>').join("")||'<p class="muted">لا توجد جلسات مفتوحة.</p>';
    $("#room-create").onclick=async()=>{try{await apiRequest("/api/platform/rooms",{method:"POST",body:JSON.stringify({type:v==="games"?"game":"cinema",title:$("#room-title").value,game:$("#room-game").value})});await renderPlatformView(v)}catch(err){$("#platform-status").textContent=err.message}};
-   content.querySelectorAll("[data-join]").forEach(b=>b.onclick=async()=>{try{await apiRequest("/api/platform/rooms/"+b.dataset.join+"/join",{method:"POST",body:JSON.stringify({mode:"player"})});$("#platform-status").textContent="تم الانضمام ✓";await renderPlatformView(v)}catch(err){$("#platform-status").textContent=err.message}});content.querySelectorAll("[data-spectate]").forEach(b=>b.onclick=async()=>{try{await apiRequest("/api/platform/rooms/"+b.dataset.spectate+"/join",{method:"POST",body:JSON.stringify({mode:"spectator"})});$("#platform-status").textContent="دخلت كمشاهد ✓";await renderPlatformView(v)}catch(err){$("#platform-status").textContent=err.message}});return;
+   content.querySelectorAll("[data-join]").forEach(b=>b.onclick=async()=>{try{const rr=await apiRequest("/api/platform/rooms/"+b.dataset.join+"/join",{method:"POST",body:JSON.stringify({mode:"player"})););await openGameRoom(rr.room.id,rr.room.game||"أونو")}catch(err){$("#platform-status").textContent=err.message}});content.querySelectorAll("[data-spectate]").forEach(b=>b.onclick=async()=>{try{await apiRequest("/api/platform/rooms/"+b.dataset.spectate+"/join",{method:"POST",body:JSON.stringify({mode:"spectator"})});$("#platform-status").textContent="دخلت كمشاهد ✓";await renderPlatformView(v)}catch(err){$("#platform-status").textContent=err.message}});return;
   }
   if(v==="conversations"){
    const [cd,ud]=await Promise.all([apiRequest("/api/platform/conversations"),apiRequest("/api/platform/users")]);
