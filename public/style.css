@@ -30,3 +30,7 @@
 .platform-card select[multiple]{min-height:120px}
 .platform-card select option{padding:8px}
 @media(max-width:640px){.platform-card{padding:14px;border-radius:16px}.feed-card,.chat-line{padding:11px}.platform-feed{max-height:none}}
+
+.review-submit{grid-column:1/-1;display:grid;grid-template-columns:minmax(0,1fr) 170px auto;gap:10px;align-items:start;padding:14px;background:#100b17;border:1px solid #80589155;border-radius:16px}
+.review-submit textarea{min-height:58px}
+@media(max-width:640px){.review-submit{grid-template-columns:1fr}.review-submit button{width:100%}}
