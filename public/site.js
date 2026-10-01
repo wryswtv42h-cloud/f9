@@ -3449,8 +3449,50 @@ async function renderHub() {
     };
 }
 
+async function renderAdmin() {
+  if (searchWrap) searchWrap.style.display = "none";
+  const me = await apiRequest("/api/auth/me").catch(() => ({authenticated:false}));
+  const role = me && me.user ? me.user.role : null;
+  if (!me.authenticated || !["owner","admin"].includes(role)) { setStatus("هذه اللوحة للأعضاء المصرح لهم فقط"); return change("account"); }
+  title.textContent = role === "owner" ? "لوحة الأونر" : "لوحة الإدارة";
+  subtitle.textContent = role === "owner" ? "تحكم كامل بالحسابات والتقديمات والإعلانات والمراجعات." : "إدارة التذاكر والقروبات بدون صلاحيات الأونر.";
+  const tickets = await apiRequest("/api/platform/tickets").catch(() => ({tickets:[]}));
+  const groups = await apiRequest("/api/platform/groups").catch(() => ({groups:[]}));
+  let users=[], apps=[], reviews=[], announcement=null, audit=[];
+  if (role === "owner") {
+    const x = await Promise.all([apiRequest("/api/platform/owner/accounts"),apiRequest("/api/platform/applications"),apiRequest("/api/platform/reviews"),apiRequest("/api/public/announcement"),apiRequest("/api/platform/owner/audit")]);
+    users=x[0].users||[]; apps=x[1].applications||[]; reviews=x[2].reviews||[]; announcement=x[3]; audit=x[4].items||[];
+  }
+  content.className = "platform-view";
+  let html = '<div class="platform-card"><span class="eyebrow">MLD CONTROL</span><h3>'+(role==="owner"?"لوحة الأونر":"لوحة الإدارة")+'</h3><div class="top-grid"><article class="top-card"><small>التذاكر</small><h4>'+(tickets.tickets||[]).length+'</h4></article><article class="top-card"><small>القروبات المعلقة</small><h4>'+(groups.groups||[]).filter(function(x){return x.status==="pending";}).length+'</h4></article>'+(role==="owner"?'<article class="top-card"><small>الحسابات</small><h4>'+users.length+'</h4></article><article class="top-card"><small>التقديمات</small><h4>'+apps.length+'</h4></article>':"")+'</div></div>';
+  if (role === "owner") {
+    html += '<div class="platform-card"><h3>إعلان أعلى الموقع</h3><input id="owner-ann-text" class="full"><div class="form-row"><input id="owner-ann-color" type="color"><select id="owner-ann-speed" class="full"><option value="slow">بطيء</option><option value="normal">عادي</option><option value="fast">سريع</option></select><label><input id="owner-ann-enabled" type="checkbox"> مفعّل</label></div><button id="owner-ann-save" class="primary">حفظ الإعلان</button></div>';
+    html += '<div class="platform-card"><h3>الحسابات والصلاحيات</h3><div class="form-row"><input id="owner-new-user" class="full" placeholder="اسم المستخدم"><input id="owner-new-pass" class="full" type="password" placeholder="كلمة المرور"><input id="owner-new-discord" class="full" placeholder="يوزر ديسكورد اختياري"><select id="owner-new-role" class="full"><option value="member">عضو</option><option value="admin">إداري</option></select><button id="owner-create-user" class="primary">إنشاء حساب</button></div><div class="platform-feed">'+users.map(function(u){return '<article class="feed-card"><b>'+esc(u.displayName||u.username)+'</b> · @'+esc(u.username)+'<p class="muted">'+esc(u.discordUsername||"بدون ديسكورد")+' · '+esc(u.role)+'</p>'+(u.role!=="owner"?'<button class="primary owner-toggle-role" data-user="'+esc(u.username)+'" data-role="'+(u.role==="admin"?"member":"admin")+'">'+(u.role==="admin"?"إزالة الإدارة":"منح الإدارة")+'</button> <button class="primary owner-delete-user" data-user="'+esc(u.username)+'">حذف</button>':"")+'</article>';}).join("")+'</div></div>';
+    html += '<div class="platform-card"><h3>التقديمات — للأونر فقط</h3><div class="platform-feed">'+apps.map(function(a){return '<article class="feed-card"><b>'+esc(a.owner)+'</b> · '+esc(a.discordUsername)+'<p>'+esc(a.answers||"")+'</p><small>'+esc(a.status)+'</small><br><button class="primary app-status" data-id="'+esc(a.id)+'" data-status="accepted">قبول</button> <button class="primary app-status" data-id="'+esc(a.id)+'" data-status="rejected">رفض</button></article>';}).join("")+'</div></div>';
+    html += '<div class="platform-card"><h3>إدارة الآراء</h3><div class="platform-feed">'+reviews.map(function(r){return '<article class="feed-card"><b>'+esc(r.user&&r.user.displayName||"عضو")+'</b><p>'+esc(r.text)+'</p><button class="primary owner-delete-review" data-id="'+esc(r.id)+'">حذف الرأي</button></article>';}).join("")+'</div></div>';
+    html += '<div class="platform-card"><h3>السجل</h3><div class="platform-feed">'+audit.slice(0,50).map(function(a){return '<article class="feed-card"><b>'+esc(a.actor)+'</b> · '+esc(a.action)+' · '+esc(a.type)+'</article>';}).join("")+'</div></div>';
+  }
+  html += '<div class="platform-card"><h3>التذاكر</h3><div class="platform-feed">'+(tickets.tickets||[]).map(function(t){return '<article class="feed-card"><b>'+esc(t.title)+'</b><p>'+esc(t.owner)+' · '+esc(t.status)+'</p><button class="primary ticket-close" data-id="'+esc(t.id)+'">إغلاق</button></article>';}).join("")+'</div></div>';
+  html += '<div class="platform-card"><h3>طلبات القروبات</h3><div class="platform-feed">'+(groups.groups||[]).filter(function(g){return g.status==="pending";}).map(function(g){return '<article class="feed-card"><b>'+esc(g.name)+'</b><p>'+esc(g.description||"")+'</p><button class="primary group-decision" data-id="'+esc(g.id)+'" data-status="approved">قبول</button> <button class="primary group-decision" data-id="'+esc(g.id)+'" data-status="rejected">رفض</button></article>';}).join("")+'</div></div>';
+  content.innerHTML = html;
+  if (role === "owner") {
+    $("#owner-ann-text").value = announcement && announcement.text || ""; $("#owner-ann-color").value = announcement && announcement.color || "#ff9cde"; $("#owner-ann-speed").value = announcement && announcement.speed || "normal"; $("#owner-ann-enabled").checked = !announcement || announcement.enabled !== false;
+    $("#owner-ann-save").onclick = async function(){try{await apiRequest("/api/platform/owner/announcement",{method:"PATCH",body:JSON.stringify({text:$("#owner-ann-text").value,enabled:$("#owner-ann-enabled").checked,color:$("#owner-ann-color").value,speed:$("#owner-ann-speed").value})});setStatus("تم حفظ الإعلان ✓");}catch(e){setStatus(e.message);}};
+    $("#owner-create-user").onclick = async function(){try{await apiRequest("/api/platform/owner/accounts",{method:"POST",body:JSON.stringify({username:$("#owner-new-user").value,password:$("#owner-new-pass").value,discordUsername:$("#owner-new-discord").value,role:$("#owner-new-role").value})});await renderAdmin();}catch(e){setStatus(e.message);}};
+    content.querySelectorAll(".owner-toggle-role").forEach(function(b){b.onclick=async function(){try{await apiRequest("/api/platform/owner/accounts/"+encodeURIComponent(b.dataset.user),{method:"PATCH",body:JSON.stringify({role:b.dataset.role})});await renderAdmin();}catch(e){setStatus(e.message);}};});
+    content.querySelectorAll(".owner-delete-user").forEach(function(b){b.onclick=async function(){if(!confirm("تأكيد حذف الحساب؟"))return;try{await apiRequest("/api/platform/owner/accounts/"+encodeURIComponent(b.dataset.user),{method:"DELETE"});await renderAdmin();}catch(e){setStatus(e.message);}};});
+    content.querySelectorAll(".app-status").forEach(function(b){b.onclick=async function(){try{await apiRequest("/api/platform/applications/"+b.dataset.id,{method:"PATCH",body:JSON.stringify({status:b.dataset.status})});await renderAdmin();}catch(e){setStatus(e.message);}};});
+    content.querySelectorAll(".owner-delete-review").forEach(function(b){b.onclick=async function(){try{await apiRequest("/api/platform/reviews/"+b.dataset.id,{method:"DELETE"});await renderAdmin();}catch(e){setStatus(e.message);}};});
+  }
+  content.querySelectorAll(".ticket-close").forEach(function(b){b.onclick=async function(){try{await apiRequest("/api/platform/tickets/"+b.dataset.id,{method:"PATCH",body:JSON.stringify({status:"closed"})});await renderAdmin();}catch(e){setStatus(e.message);}};});
+  content.querySelectorAll(".group-decision").forEach(function(b){b.onclick=async function(){try{await apiRequest("/api/platform/groups/"+b.dataset.id,{method:"PATCH",body:JSON.stringify({status:b.dataset.status})});await renderAdmin();}catch(e){setStatus(e.message);}};});
+}
+
 async function change(v) {
   view = v;
+
+  const reviewButton = $("#add-review-btn");
+  if (reviewButton) reviewButton.style.display = v === "home" ? "" : "none";
 
   document.body.classList.toggle(
     "mld-non-home",
