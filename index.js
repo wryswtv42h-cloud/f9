@@ -2,6 +2,8 @@
 require("dotenv").config();
 
 const path = require("path");
+const http = require("http");
+const { Server: SocketIOServer } = require("socket.io");
 const express = require("express");
 const cors = require("cors");
 const { Client, GatewayIntentBits, EmbedBuilder } = require("discord.js");
@@ -35,6 +37,13 @@ app.use(express.json({ limit: "20kb" }));
 app.use(express.static(path.join(__dirname, "public")));
 
 const ACCOUNTS_FILE = path.join(__dirname, "accounts.json");
+const TICKETS_FILE = path.join(__dirname, "tickets.json");
+const OWNER_DATA = { name: process.env.OWNER_DISPLAY_NAME || "فهد المطيري", discordUsername: process.env.OWNER_DISCORD_USERNAME || "w4px", discordId: process.env.OWNER_DISCORD_ID || "" };
+function readTickets(){try{return JSON.parse(fs.readFileSync(TICKETS_FILE,"utf8"));}catch{return [];}}
+function writeTickets(a){fs.writeFileSync(TICKETS_FILE,JSON.stringify(a,null,2));}
+function getAuthAccountFromReq(req){const s=sessionUser(req);return s?.type==="auth"?readAccounts().find(a=>a.id===s.accountId):null;}
+function canManageTickets(a){return !!a&&["owner","admin"].includes(a.role);}
+
 const sessions = new Map();
 function readAccounts(){ try { return JSON.parse(fs.readFileSync(ACCOUNTS_FILE,"utf8")); } catch { return []; } }
 function writeAccounts(a){ fs.writeFileSync(ACCOUNTS_FILE, JSON.stringify(a,null,2)); }
@@ -204,6 +213,10 @@ function sortedMemberJson(members) {
     .map(memberJson);
 }
 
+app.get("/api/owner",(req,res)=>res.json(OWNER_DATA));
+app.get("/api/tickets",(req,res)=>{const a=getAuthAccountFromReq(req);if(!a)return res.status(401).json({error:"سجل الدخول أولًا"});const all=readTickets();res.json({tickets:canManageTickets(a)?all:all.filter(t=>t.userId===a.id)});});
+app.post("/api/tickets",(req,res)=>{const a=getAuthAccountFromReq(req);if(!a)return res.status(401).json({error:"سجل الدخول أولًا"});const subject=String(req.body?.subject||"").trim(),message=String(req.body?.message||"").trim();if(!subject||!message)return res.status(400).json({error:"اكتب عنوان التذكرة والرسالة"});const ts=readTickets(),t={id:crypto.randomUUID(),userId:a.id,userName:a.username,subject,message,status:"open",createdAt:new Date().toISOString(),messages:[{id:crypto.randomUUID(),userId:a.id,userName:a.username,role:a.role,text:message,createdAt:new Date().toISOString()}]};ts.unshift(t);writeTickets(ts);io?.to("ticket:"+t.id).emit("ticket:updated",t);res.json({ticket:t});});
+app.post("/api/tickets/:id/close",(req,res)=>{const a=getAuthAccountFromReq(req);if(!canManageTickets(a))return res.status(403).json({error:"غير مصرح"});const ts=readTickets(),t=ts.find(x=>x.id===req.params.id);if(!t)return res.status(404).json({error:"التذكرة غير موجودة"});t.status="closed";t.closedAt=new Date().toISOString();writeTickets(ts);io?.to("ticket:"+t.id).emit("ticket:updated",t);res.json({ticket:t});});
 app.post("/api/auth/register", async (req,res)=>{
   const username=String(req.body?.username||"").trim();
   const password=String(req.body?.password||"");
@@ -486,7 +499,9 @@ app.get("*", (req, res) => {
   res.sendFile(path.join(__dirname, "public", "index.html"));
 });
 
-app.listen(port, () => console.log(`MLD listening on port ${port}`));
+const server=http.createServer(app);const io=new SocketIOServer(server,{cors:{origin:true,credentials:true}});
+io.on("connection",socket=>{const sid=String(socket.handshake.auth?.sessionId||""),s=sessions.get(sid),a=s?.type==="auth"?readAccounts().find(x=>x.id===s.accountId):null;if(!a)return socket.disconnect(true);socket.on("ticket:join",id=>{const t=readTickets().find(x=>x.id===id);if(!t||(t.userId!==a.id&&!canManageTickets(a)))return;socket.join("ticket:"+id);socket.emit("ticket:updated",t);});socket.on("ticket:message",d=>{const id=String(d?.ticketId||""),text=String(d?.text||"").trim();if(!text)return;const ts=readTickets(),t=ts.find(x=>x.id===id);if(!t||t.status==="closed"||(t.userId!==a.id&&!canManageTickets(a)))return;const m={id:crypto.randomUUID(),userId:a.id,userName:a.username,role:a.role,text,createdAt:new Date().toISOString()};t.messages.push(m);writeTickets(ts);io.to("ticket:"+id).emit("ticket:message",m);});});
+server.listen(port,()=>console.log(`MLD listening on port ${port}`));
 client.once("ready", () => console.log(`Logged in as ${client.user.tag}`));
 client.login(token).catch((error) => {
   console.error("Discord login failed:", error.message);
