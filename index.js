@@ -8,6 +8,7 @@ const express = require("express");
 const cors = require("cors");
 const { Client, GatewayIntentBits, EmbedBuilder, ActionRowBuilder, ButtonBuilder, ButtonStyle, PermissionsBitField } = require("discord.js");
 const GAME_ENGINE = require("./game-engine");
+const BOT_COMMANDS = require("./bots/command-registry");
 
 const token = process.env.DISCORD_BOT_TOKEN;
 const guildId = process.env.DISCORD_GUILD_ID;
@@ -283,7 +284,7 @@ function startManagedBot(id){
    const prefix=cfg.prefix||"!";
    if(!m.content.startsWith(prefix))return;
    const [cmd,...args]=m.content.slice(prefix.length).trim().split(/\s+/);
-   if(cmd==="ping")return m.reply("Pong 🏓 · "+cfg.name);
+   if(cmd==="ping")return m.reply("Pong 🏓 · "+cfg.name);\n   if(cmd==="help"||cmd==="مساعدة"||cmd==="أوامر"){return m.reply(BOT_COMMANDS.helpText(cfg.modules.includes("bank")?"bank":cfg.modules.includes("games")?"lynx":"system",prefix));}\n   if(cfg.modules.includes("bank")){const reply=BOT_COMMANDS.execute({type:"bank",command:cmd,args,author:m.author,prefix});if(reply)return m.reply(reply);}\n   if(cfg.modules.includes("games")){const reply=BOT_COMMANDS.execute({type:"lynx",command:cmd,args,author:m.author,prefix});if(reply)return m.reply(reply);}\n   if(cfg.modules.includes("system")){const reply=BOT_COMMANDS.execute({type:"system",command:cmd,args,author:m.author,prefix});if(reply)return m.reply(reply);}
    if(cmd==="help"||cmd==="مساعدة")return m.reply("**"+cfg.name+"**\\n"+cfg.modules.map(x=>"• "+BOT_MODULES[x]?.name).join("\\n")+"\\n\\nحقوق MALADH · "+(cfg.plan||"basic"));
    if(cfg.modules.includes("streak")&&["streak","ستريك"].includes(cmd))return m.reply("🔥 الستريك جاهز — نظام مستقل لهذا البوت.");
    if(cfg.modules.includes("bank")&&["bank","بنك"].includes(cmd))return m.reply("💰 بنكك مستقل عن بقية البوتات.");
