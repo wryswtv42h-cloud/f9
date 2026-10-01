@@ -249,6 +249,18 @@ app.get("/api/owner/accounts",async(req,res)=>{
   res.json({accounts:accounts.map(x=>safeUser(x))});
 });
 
+app.patch("/api/owner/accounts/:id",async(req,res)=>{
+  const a=getAuthAccountFromReq(req);
+  if(a?.role!=="owner") return res.status(403).json({error:"هذه العملية للأونر فقط"});
+  const role=String(req.body?.role||"");
+  if(!["member","admin"].includes(role)) return res.status(400).json({error:"رتبة الحساب غير صالحة"});
+  if(req.params.id===a.id) return res.status(400).json({error:"لا يمكنك تغيير رتبة حساب الأونر"});
+  const accounts=readAccounts(),target=accounts.find(x=>x.id===req.params.id);
+  if(!target) return res.status(404).json({error:"الحساب غير موجود"});
+  const previous=target.role; target.role=role; writeAccounts(accounts);
+  audit("account.role.changed",{targetId:target.id,targetUsername:target.username,from:previous,to:role},a);
+  res.json({user:safeUser(target)});
+});
 app.delete("/api/owner/accounts/:id",async(req,res)=>{
   const a=getAuthAccountFromReq(req);
   if(a?.role!=="owner") return res.status(403).json({error:"هذه العملية للأونر فقط"});
@@ -282,7 +294,16 @@ function readApplications(){try{return JSON.parse(fs.readFileSync(APPLICATIONS_F
 function writeApplications(a){fs.writeFileSync(APPLICATIONS_FILE,JSON.stringify(a,null,2));}
 function readApplicationQuestions(){try{return JSON.parse(fs.readFileSync(APPLICATION_QUESTIONS_FILE,"utf8"));}catch{return ["لماذا ترغب بالانضمام إلى الإدارة؟","ما خبرتك في إدارة المجتمعات أو Discord؟","كيف تتصرف مع خلاف بين عضوين؟","كم الوقت الذي تستطيع تخصيصه للإدارة؟"];}}
 function canManageApplications(a){return !!a&&["owner","admin"].includes(a.role);}
-app.get("/api/applications/questions",(req,res)=>res.json({questions:readApplicationQuestions()}));
+app.get("/api/applications/questions",(req,res)=>res.json({questions:readApplicationQuestions()}));app.put("/api/applications/questions",(req,res)=>{
+  const a=getAuthAccountFromReq(req);
+  if(a?.role!=="owner") return res.status(403).json({error:"تعديل أسئلة التقديم للأونر فقط"});
+  const questions=Array.isArray(req.body?.questions)?req.body.questions.map(x=>String(x||"").trim()).filter(Boolean).slice(0,20):[];
+  if(!questions.length) return res.status(400).json({error:"يجب وجود سؤال واحد على الأقل"});
+  writeJsonFile(APPLICATION_QUESTIONS_FILE,questions);
+  audit("application.questions.updated",{count:questions.length},a);
+  res.json({questions});
+});
+
 app.post("/api/applications",(req,res)=>{const a=getAuthAccountFromReq(req);if(!a)return res.status(401).json({error:"سجل الدخول أولًا"});const answers=Array.isArray(req.body?.answers)?req.body.answers.map(x=>String(x||"").trim()):[];const questions=readApplicationQuestions();if(answers.length!==questions.length||answers.some(x=>!x))return res.status(400).json({error:"أجب على جميع أسئلة التقديم"});const apps=readApplications();if(apps.some(x=>x.userId===a.id&&x.status==="pending"))return res.status(409).json({error:"لديك طلب تقديم قيد المراجعة"});const application={id:crypto.randomUUID(),userId:a.id,userName:a.username,discordUsername:a.discordUsername,answers,questions,status:"pending",createdAt:new Date().toISOString()};apps.unshift(application);writeApplications(apps);audit("application.created",{applicationId:application.id},a);res.json({application});});
 app.get("/api/applications",(req,res)=>{const a=getAuthAccountFromReq(req);if(!canManageApplications(a))return res.status(403).json({error:"غير مصرح"});res.json({applications:readApplications()});});
 app.post("/api/applications/:id/decision",async(req,res)=>{
