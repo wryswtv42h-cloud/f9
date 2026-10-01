@@ -224,6 +224,17 @@ const platform = {
 };
 const newId = () => crypto.randomUUID();
 const nowIso = () => new Date().toISOString();
+let siteAnnouncement = {enabled:true,text:"أهلًا بكم في MALADH · مجتمعنا يجمعنا",color:"#ff9cde",speed:"normal"};
+app.get("/api/public/announcement",(req,res)=>res.json(siteAnnouncement));
+app.patch("/api/platform/owner/announcement",(req,res)=>{
+  const u=needUser(req,res); if(!u)return;
+  if(u.role!=="owner")return res.status(403).json({error:"هذا التحكم للأونر فقط"});
+  const text=safeText(req.body?.text,220);
+  siteAnnouncement={enabled:Boolean(req.body?.enabled),text,color:/^#[0-9a-fA-F]{6}$/.test(String(req.body?.color||""))?String(req.body.color):"#ff9cde",speed:["slow","normal","fast"].includes(req.body?.speed)?req.body.speed:"normal"};
+  audit(u,"update","announcement", "site", {text:siteAnnouncement.text,enabled:siteAnnouncement.enabled});
+  res.json({ok:true,announcement:siteAnnouncement});
+});
+
 
 platform.hubPolls = platform.hubPolls || [
   {id:newId(),question:"وش تبون يكون محور الفعالية الجاية؟",options:["ليلة ألعاب","بطولة","جلسة سوالف","سينما"],votes:[0,0,0,0],voters:[]}
