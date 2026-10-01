@@ -6,7 +6,7 @@ const crypto = require("crypto");
 const bcrypt = require("bcryptjs");
 const express = require("express");
 const cors = require("cors");
-const { Client, GatewayIntentBits, EmbedBuilder, ActionRowBuilder, ButtonBuilder, ButtonStyle } = require("discord.js");
+const { Client, GatewayIntentBits, EmbedBuilder, ActionRowBuilder, ButtonBuilder, ButtonStyle, PermissionsBitField } = require("discord.js");
 
 const token = process.env.DISCORD_BOT_TOKEN;
 const guildId = process.env.DISCORD_GUILD_ID;
@@ -215,6 +215,79 @@ app.post("/api/auth/signup",async(req,res)=>{const username=cleanUsername(req.bo
 app.get("/api/auth/signup-status",(req,res)=>{const p=pendingSignups.get(cleanUsername(req.query?.username));res.json({pending:Boolean(p),confirmed:Boolean(p?.confirmed),expired:Boolean(p&&Date.now()>p.expires)});});
 app.post("/api/auth/verify-signup",(req,res)=>{const username=cleanUsername(req.body?.username),p=pendingSignups.get(username);if(!p||Date.now()>p.expires)return res.status(400).json({error:"انتهت صلاحية طلب التسجيل، أعد المحاولة"});if(!p.confirmed)return res.status(400).json({error:"اضغط زر التأكيد في الخاص بديسكورد أولًا"});const u={username:p.username,displayName:p.username,discordUsername:p.discordUsername,discordId:p.memberId,role:"member",passwordHash:p.passwordHash,createdAt:new Date().toISOString()};siteUsers.set(username,u);pendingSignups.delete(username);const token=crypto.randomBytes(32).toString("hex");sessions.set(token,u);res.setHeader("Set-Cookie","mld_session="+token+"; Path=/; HttpOnly; Secure; SameSite=Lax; Max-Age=604800");res.json({ok:true,user:publicUser(u)});});
 client.on("interactionCreate",async(interaction)=>{if(!interaction.isButton()||!interaction.customId.startsWith("mld_signup_confirm_"))return;const username=cleanUsername(interaction.customId.slice("mld_signup_confirm_".length));const p=pendingSignups.get(username);if(!p||Date.now()>p.expires){return interaction.reply({content:"انتهت صلاحية طلب التسجيل. ارجع للموقع وابدأ من جديد.",ephemeral:true})}if(interaction.user.id!==p.memberId)return interaction.reply({content:"هذا الزر مخصص لصاحب طلب التسجيل فقط.",ephemeral:true});p.confirmed=true;pendingSignups.set(username,p);await interaction.update({content:"تم تأكيد إنشاء حساب MLD بنجاح ✓ ارجع للموقع لإكمال الدخول.",components:[]});});
+
+// Owner-created site accounts: these intentionally bypass the public Discord-verification flow.
+app.post("/api/platform/owner/accounts", async (req,res)=>{
+  const owner=needUser(req,res); if(!owner)return;
+  if(owner.role!=="owner")return res.status(403).json({error:"للأونر فقط"});
+  const username=cleanUsername(req.body?.username), password=String(req.body?.password||""), discordUsername=String(req.body?.discordUsername||"").trim();
+  if(username.length<3||password.length<6)return res.status(400).json({error:"اسم المستخدم 3 أحرف على الأقل وكلمة المرور 6 أحرف"});
+  if(siteUsers.has(username))return res.status(409).json({error:"اسم المستخدم مستخدم بالفعل"});
+  let discordId=null;
+  if(discordUsername){
+    try{const guild=await getGuild(),members=await getAllMembers(guild);const m=members.find(x=>x.user.username.toLowerCase()===discordUsername.toLowerCase()||String(x.user.globalName||"").toLowerCase()===discordUsername.toLowerCase());if(m)discordId=m.id;}catch{}
+  }
+  const u={username,displayName:String(req.body?.displayName||username).trim().slice(0,60),discordUsername:discordUsername||"",discordId,role:["member","admin"].includes(req.body?.role)?req.body.role:"member",passwordHash:await bcrypt.hash(password,12),createdAt:nowIso(),ownerCreated:true};
+  siteUsers.set(username,u);audit(owner,"create","site_account",username,{role:u.role,discordUsername:u.discordUsername,ownerCreated:true});
+  res.json({ok:true,user:publicUser(u)});
+});
+app.get("/api/platform/owner/accounts",(req,res)=>{const owner=needUser(req,res);if(!owner)return;if(owner.role!=="owner")return res.status(403).json({error:"للأونر فقط"});res.json({users:[...siteUsers.values()].map(u=>({username:u.username,displayName:u.displayName,discordUsername:u.discordUsername,role:u.role,ownerCreated:Boolean(u.ownerCreated),createdAt:u.createdAt}))})});
+
+const botInstances=new Map();
+const botConfigs=new Map();
+const BOT_MODULES={
+  system:{name:"سستم",desc:"أوامر الإدارة والمساعدة والحماية الأساسية"},
+  tickets:{name:"تيكت وتقديمات",desc:"نظام التذاكر والتقديمات"},
+  broadcast:{name:"برودكاست",desc:"إرسال إعلانات منظمة"},
+  games:{name:"العاب",desc:"ألعاب وأوامر ترفيهية"},
+  bank:{name:"بنك",desc:"محفظة واقتصاد مستقل لكل بوت"},
+  streak:{name:"ستريك",desc:"سلاسل دخول وتفاعل"},
+  giveaway:{name:"قيفاوي",desc:"إنشاء وإدارة السحوبات"},
+  voice:{name:"دعم فويس",desc:"نظام دعم غرف الصوت"},
+  zajel:{name:"الزاجل",desc:"رسائل وتنبيهات ومهام تواصل ذكية"}
+};
+function botPermissionFlags(modules){
+  let p=PermissionsBitField.Flags.ViewChannel|PermissionsBitField.Flags.SendMessages|PermissionsBitField.Flags.EmbedLinks|PermissionsBitField.Flags.ReadMessageHistory;
+  if(modules.includes("tickets")||modules.includes("broadcast")||modules.includes("system"))p|=PermissionsBitField.Flags.ManageChannels;
+  if(modules.includes("giveaway")||modules.includes("system"))p|=PermissionsBitField.Flags.ManageMessages;
+  if(modules.includes("voice"))p|=PermissionsBitField.Flags.Connect|PermissionsBitField.Flags.Speak|PermissionsBitField.Flags.MoveMembers;
+  return p.toString();
+}
+function botInviteUrl(botId,modules,guildId){const perms=botPermissionFlags(modules);return "https://discord.com/oauth2/authorize?client_id="+encodeURIComponent(botId)+"&scope=bot%20applications.commands&permissions="+encodeURIComponent(perms)+(guildId?"&guild_id="+encodeURIComponent(guildId):"");}
+function stopManagedBot(id){const b=botInstances.get(id);if(b){try{b.destroy()}catch{}botInstances.delete(id)}}
+function startManagedBot(id){
+ const cfg=botConfigs.get(id);if(!cfg)return Promise.reject(new Error("البوت غير موجود"));
+ stopManagedBot(id);
+ const bc=new Client({intents:[GatewayIntentBits.Guilds,GatewayIntentBits.GuildMessages,GatewayIntentBits.MessageContent,GatewayIntentBits.GuildVoiceStates]});
+ bc.on("messageCreate",async m=>{
+   if(m.author.bot)return;
+   const prefix=cfg.prefix||"!";
+   if(!m.content.startsWith(prefix))return;
+   const [cmd,...args]=m.content.slice(prefix.length).trim().split(/\s+/);
+   if(cmd==="ping")return m.reply("Pong 🏓 · "+cfg.name);
+   if(cmd==="help"||cmd==="مساعدة")return m.reply("**"+cfg.name+"**\\n"+cfg.modules.map(x=>"• "+BOT_MODULES[x]?.name).join("\\n")+"\\n\\nحقوق MALADH · "+(cfg.plan||"basic"));
+   if(cfg.modules.includes("streak")&&["streak","ستريك"].includes(cmd))return m.reply("🔥 الستريك جاهز — نظام مستقل لهذا البوت.");
+   if(cfg.modules.includes("bank")&&["bank","بنك"].includes(cmd))return m.reply("💰 بنكك مستقل عن بقية البوتات.");
+   if(cfg.modules.includes("games")&&["game","لعبة","العاب"].includes(cmd))return m.reply("🎮 ألعاب MALADH: قريبًا عبر لوحة البوت.");
+   if(cfg.modules.includes("giveaway")&&["giveaway","قيفاوي"].includes(cmd))return m.reply("🎁 نظام القيفاوي مفعل. استخدم لوحة البوت لإدارة السحوبات.");
+   if(cfg.modules.includes("zajel")&&["zajel","زاجل"].includes(cmd))return m.reply("📨 الزاجل حاضر — رسائل وتنبيهات مستقلة.");
+ });
+ bc.once("ready",()=>{cfg.botId=bc.user.id;cfg.status="online";cfg.invite=botInviteUrl(bc.user.id,cfg.modules,cfg.guildId);cfg.updatedAt=nowIso();});
+ bc.on("error",e=>{cfg.status="error";cfg.error=e.message});
+ botInstances.set(id,bc);cfg.status="starting";return bc.login(cfg.token).then(()=>cfg).catch(e=>{cfg.status="error";cfg.error=e.message;botInstances.delete(id);throw e});
+}
+app.get("/api/platform/owner/bots",(req,res)=>{const owner=needUser(req,res);if(!owner)return;if(owner.role!=="owner")return res.status(403).json({error:"للأونر فقط"});res.json({bots:[...botConfigs.values()].map(({token,...safe})=>safe),modules:BOT_MODULES})});
+app.post("/api/platform/owner/bots",(req,res)=>{
+ const owner=needUser(req,res);if(!owner)return;if(owner.role!=="owner")return res.status(403).json({error:"للأونر فقط"});
+ const name=safeText(req.body?.name,60),guildTarget=safeText(req.body?.guildId,30),botToken=String(req.body?.token||"").trim(),modules=[...new Set(Array.isArray(req.body?.modules)?req.body.modules.filter(x=>BOT_MODULES[x]):[])];
+ if(!name||!guildTarget||!botToken||!modules.length)return res.status(400).json({error:"عبّ الاسم وID السيرفر والتوكن واختر خدمة واحدة على الأقل"});
+ const id=newId();botConfigs.set(id,{id,name,guildId:guildTarget,modules,token:botToken,plan:"basic",status:"created",createdAt:nowIso(),updatedAt:nowIso(),prefix:"!"});
+ startManagedBot(id).then(cfg=>{audit(owner,"create","managed_bot",id,{name,modules,guildId:guildTarget});}).catch(()=>{});
+ const cfg=botConfigs.get(id);res.json({ok:true,bot:{...cfg,token:undefined},invite:cfg.invite||null,message:"تم إنشاء البوت وبدء تشغيله. بعد ظهور رابط الإضافة أضفه للسيرفر."});
+});
+app.patch("/api/platform/owner/bots/:id/subscription",(req,res)=>{const owner=needUser(req,res);if(!owner)return;if(owner.role!=="owner")return res.status(403).json({error:"للأونر فقط"});const b=botConfigs.get(req.params.id);if(!b)return res.status(404).json({error:"البوت غير موجود"});b.plan=safeText(req.body?.plan,40)||"basic";b.expiresAt=req.body?.expiresAt||null;b.updatedAt=nowIso();audit(owner,"update","managed_bot_subscription",b.id,{plan:b.plan,expiresAt:b.expiresAt});res.json({ok:true,bot:{...b,token:undefined}})});
+app.delete("/api/platform/owner/bots/:id",(req,res)=>{const owner=needUser(req,res);if(!owner)return;if(owner.role!=="owner")return res.status(403).json({error:"للأونر فقط"});if(!botConfigs.has(req.params.id))return res.status(404).json({error:"البوت غير موجود"});stopManagedBot(req.params.id);botConfigs.delete(req.params.id);audit(owner,"delete","managed_bot",req.params.id);res.json({ok:true})});
+
 app.post("/api/auth/logout",(req,res)=>{const token=req.headers.cookie?.match(/(?:^|;\s*)mld_session=([^;]+)/)?.[1];if(token)sessions.delete(token);res.setHeader("Set-Cookie","mld_session=; Path=/; HttpOnly; Secure; SameSite=Lax; Max-Age=0");res.json({ok:true})});
 
 // MALADH platform modules (runtime store; use durable database before production scale).
