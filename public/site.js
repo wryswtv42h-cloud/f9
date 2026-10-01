@@ -3488,6 +3488,68 @@ async function renderAdmin() {
   content.querySelectorAll(".group-decision").forEach(function(b){b.onclick=async function(){try{await apiRequest("/api/platform/groups/"+b.dataset.id,{method:"PATCH",body:JSON.stringify({status:b.dataset.status})});await renderAdmin();}catch(e){setStatus(e.message);}};});
 }
 
+
+async function renderBots() {
+  if (searchWrap) searchWrap.style.display = "none";
+  title.textContent = "بوتات MALADH";
+  subtitle.textContent = "أنشئ بوتك، اختر الأنظمة، وشغّله من مكان واحد.";
+  content.className = "platform-view";
+  const me = await apiRequest("/api/auth/me").catch(() => ({authenticated:false}));
+  if (!me.authenticated) {
+    content.innerHTML = '<div class="platform-card"><span class="eyebrow">BOT STUDIO</span><h3>سجّل دخولك أولًا</h3><p class="muted">إنشاء وإدارة البوتات متاح للحسابات المسجلة فقط.</p><button id="bots-login" class="primary">تسجيل الدخول</button></div>';
+    $("#bots-login").onclick = () => change("account");
+    return;
+  }
+  const d = await apiRequest("/api/platform/my-bots");
+  const modules = d.modules || {};
+  const options = Object.entries(modules).map(([key,m]) =>
+    '<label class="feed-card bot-module-option"><input type="checkbox" name="bot-module" value="'+esc(key)+'"><div><b>'+esc(m.name || key)+'</b><p class="muted">'+esc(m.desc || "")+'</p></div></label>'
+  ).join("");
+  content.innerHTML = `
+    <div class="platform-card">
+      <span class="eyebrow">BOT STUDIO</span>
+      <h3>إنشاء بوت جديد</h3>
+      <p class="muted">اختر الخدمات المطلوبة. التوكن لا يظهر في الموقع بعد الإنشاء.</p>
+      <div class="form-row">
+        <input id="bot-name" class="full" maxlength="60" placeholder="اسم البوت">
+        <input id="bot-guild" class="full" maxlength="30" placeholder="ID السيرفر">
+        <input id="bot-token" class="full" type="password" autocomplete="new-password" placeholder="Bot Token">
+      </div>
+      <h4>الأنظمة</h4>
+      <div class="platform-feed">${options}</div>
+      <button id="bot-create" class="primary wide">إنشاء وتشغيل البوت</button>
+      <p id="bot-status" class="muted"></p>
+    </div>
+    <div class="platform-card">
+      <span class="eyebrow">MY BOTS</span>
+      <h3>بوتاتي</h3>
+      <div class="platform-feed">
+        ${(d.bots || []).map(b => `
+          <article class="feed-card">
+            <div style="display:flex;justify-content:space-between;gap:12px;align-items:center">
+              <div><b>${esc(b.name)}</b><p class="muted">${esc(b.status)} · ${esc(b.plan || "basic")} · ${esc(b.prefix || "!")}</p></div>
+              <span class="member-tag">${b.modules?.length || 0} أنظمة</span>
+            </div>
+            <p class="muted">${(b.modules || []).map(x => esc(modules[x]?.name || x)).join(" · ")}</p>
+          </article>
+        `).join("") || '<p class="muted">ما عندك بوتات حتى الآن.</p>'}
+      </div>
+    </div>`;
+  $("#bot-create").onclick = async () => {
+    const selected = [...content.querySelectorAll('input[name="bot-module"]:checked')].map(x => x.value);
+    const statusEl = $("#bot-status");
+    try {
+      if (!$("#bot-name").value.trim() || !$("#bot-guild").value.trim() || !$("#bot-token").value.trim() || !selected.length) throw new Error("عبّ البيانات واختر نظامًا واحدًا على الأقل.");
+      statusEl.textContent = "جاري إنشاء البوت وتشغيله...";
+      await apiRequest("/api/platform/bots", {
+        method:"POST",
+        body:JSON.stringify({name:$("#bot-name").value.trim(),guildId:$("#bot-guild").value.trim(),token:$("#bot-token").value.trim(),modules:selected})
+      });
+      await renderBots();
+    } catch (e) { statusEl.textContent = e.message || "تعذر إنشاء البوت."; }
+  };
+}
+
 async function change(v) {
   view = v;
 
