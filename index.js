@@ -74,6 +74,85 @@ const platform = {
 };
 const newId = () => crypto.randomUUID();
 const nowIso = () => new Date().toISOString();
+const botInstances = new Map();
+const botConfigs = new Map();
+const BOT_MODULES = {
+ system:{name:"سستم",desc:"إدارة وأوامر أساسية وحماية"},
+ tickets:{name:"تيكت وتقديمات",desc:"تذاكر وتقديمات وقنوات منظمة"},
+ broadcast:{name:"برودكاست",desc:"إعلانات وبث منظم"},
+ games:{name:"العاب",desc:"أوامر وألعاب ترفيهية"},
+ bank:{name:"بنك",desc:"اقتصاد ومحفظة مستقلة"},
+ streak:{name:"ستريك",desc:"ستريك يومي وتفاعل"},
+ giveaway:{name:"قيفاوي",desc:"سحوبات وإدارة جوائز"},
+ voice:{name:"دعم فويس",desc:"غرف دعم صوتية مؤقتة"},
+ zajel:{name:"الزاجل",desc:"رسائل وتنبيهات وجدولة"}
+};
+function botPermissionFlags(modules){
+ let p=PermissionsBitField.Flags.ViewChannel|PermissionsBitField.Flags.SendMessages|PermissionsBitField.Flags.EmbedLinks|PermissionsBitField.Flags.ReadMessageHistory;
+ if(modules.includes("tickets")||modules.includes("broadcast")||modules.includes("system"))p|=PermissionsBitField.Flags.ManageChannels;
+ if(modules.includes("giveaway")||modules.includes("system"))p|=PermissionsBitField.Flags.ManageMessages;
+ if(modules.includes("voice"))p|=PermissionsBitField.Flags.Connect|PermissionsBitField.Flags.Speak|PermissionsBitField.Flags.MoveMembers;
+ return p.toString();
+}
+function botInviteUrl(botId,modules,guildId){
+ return "https://discord.com/oauth2/authorize?client_id="+encodeURIComponent(botId)+"&scope=bot%20applications.commands&permissions="+encodeURIComponent(botPermissionFlags(modules))+(guildId?"&guild_id="+encodeURIComponent(guildId):"");
+}
+function stopManagedBot(id){const b=botInstances.get(id);if(b){try{b.destroy()}catch{}botInstances.delete(id)}}
+function startManagedBot(id){
+ const cfg=botConfigs.get(id);if(!cfg)return Promise.reject(new Error("البوت غير موجود"));
+ stopManagedBot(id);
+ const bc=new Client({intents:[GatewayIntentBits.Guilds,GatewayIntentBits.GuildMessages,GatewayIntentBits.MessageContent,GatewayIntentBits.GuildVoiceStates]});
+ bc.on("messageCreate",async m=>{
+  if(m.author.bot)return;
+  const prefix=cfg.prefix||"!";
+  if(!m.content.startsWith(prefix))return;
+  const [cmd,...args]=m.content.slice(prefix.length).trim().split(/\s+/);
+  const c=String(cmd||"").toLowerCase();
+  if(c==="ping")return m.reply("Pong 🏓 · "+cfg.name);
+  if(c==="help"||c==="مساعدة")return m.reply("**"+cfg.name+"**\n"+cfg.modules.map(x=>"• "+(BOT_MODULES[x]?.name||x)).join("\n"));
+  if(cfg.modules.includes("streak")&&(c==="streak"||c==="ستريك"))return m.reply("🔥 ستريك البوت مستقل عن بقية البوتات.");
+  if(cfg.modules.includes("bank")&&(c==="bank"||c==="بنك"))return m.reply("💰 البنك مستقل لهذا البوت.");
+  if(cfg.modules.includes("games")&&(c==="game"||c==="لعبة"||c==="العاب"))return m.reply("🎮 نظام الألعاب مفعّل.");
+  if(cfg.modules.includes("giveaway")&&(c==="giveaway"||c==="قيفاوي"))return m.reply("🎁 نظام القيفاوي مفعّل.");
+  if(cfg.modules.includes("zajel")&&(c==="zajel"||c==="زاجل"))return m.reply("📨 الزاجل حاضر.");
+ });
+ bc.once("ready",()=>{
+  cfg.botId=bc.user.id;cfg.avatar=bc.user.displayAvatarURL({extension:"png",size:256});
+  cfg.status="online";cfg.invite=botInviteUrl(bc.user.id,cfg.modules,cfg.guildId);cfg.updatedAt=nowIso();applyBotPresence(cfg);
+ });
+ bc.on("error",e=>{cfg.status="error";cfg.error=String(e.message||e);});
+ botInstances.set(id,bc);cfg.status="starting";
+ return bc.login(cfg.token).then(()=>cfg).catch(e=>{cfg.status="error";cfg.error=String(e.message||e);botInstances.delete(id);throw e});
+}
+app.get("/api/platform/owner/bots",(req,res)=>{
+ const u=needUser(req,res);if(!u)return;if(u.role!=="owner")return res.status(403).json({error:"للأونر فقط"});
+ res.json({bots:[...botConfigs.values()].map(({token,...b})=>b),modules:BOT_MODULES});
+});
+app.post("/api/platform/owner/bots",(req,res)=>{
+ const u=needUser(req,res);if(!u)return;
+ const name=safeText(req.body?.name,60),targetGuild=safeText(req.body?.guildId,30),botToken=String(req.body?.token||"").trim();
+ const modules=[...new Set(Array.isArray(req.body?.modules)?req.body.modules.filter(x=>BOT_MODULES[x]):[])];
+ if(!name||!targetGuild||!botToken||!modules.length)return res.status(400).json({error:"عبّ اسم البوت وID السيرفر والتوكن واختر نظامًا واحدًا على الأقل"});
+ const id=newId();
+ const cfg={id,name,guildId:targetGuild,modules,token:botToken,ownerUsername:u.username,creatorUsername:u.username,plan:"basic",expiresAt:null,status:"created",prefix:"!",watching:null,statusText:"online",serverLink:process.env.DISCORD_INVITE_URL||"",createdAt:nowIso(),updatedAt:nowIso()};
+ botConfigs.set(id,cfg);
+ startManagedBot(id).catch(()=>{});
+ audit(u,"create","managed_bot",id,{name,modules,guildId:targetGuild});
+ res.json({ok:true,bot:botSafeProfile(cfg),invite:cfg.invite||null});
+});
+app.patch("/api/platform/owner/bots/:id/subscription",(req,res)=>{
+ const u=needUser(req,res);if(!u)return;if(u.role!=="owner")return res.status(403).json({error:"للأونر فقط"});
+ const b=botConfigs.get(req.params.id);if(!b)return res.status(404).json({error:"البوت غير موجود"});
+ b.plan=safeText(req.body?.plan,40)||"basic";b.expiresAt=req.body?.expiresAt||null;b.updatedAt=nowIso();applyBotPresence(b);
+ audit(u,"update","managed_bot_subscription",b.id,{plan:b.plan,expiresAt:b.expiresAt});
+ res.json({ok:true,bot:botSafeProfile(b)});
+});
+app.delete("/api/platform/owner/bots/:id",(req,res)=>{
+ const u=needUser(req,res);if(!u)return;if(u.role!=="owner")return res.status(403).json({error:"للأونر فقط"});
+ if(!botConfigs.has(req.params.id))return res.status(404).json({error:"البوت غير موجود"});
+ stopManagedBot(req.params.id);botConfigs.delete(req.params.id);audit(u,"delete","managed_bot",req.params.id);res.json({ok:true});
+});
+
 let siteAnnouncement = {enabled:true,text:"أهلًا بكم في MALADH · مجتمعنا يجمعنا",color:"#ff9cde",speed:"normal"};
 app.get("/api/public/announcement",(req,res)=>res.json(siteAnnouncement));
 app.patch("/api/platform/owner/announcement",(req,res)=>{
