@@ -148,3 +148,28 @@
  .reviews-head{gap:12px}
  .reviews-head .primary{width:100%}
 }
+
+
+/* MALADH unified purple/pink palette */
+.site-announcement{background:linear-gradient(90deg,#08060d,#25152f,#08060d)!important;border-bottom:1px solid #ff9cde55!important}
+.site-announcement,.announcement-track{min-height:40px!important}
+.announcement-track span{color:#ffcfec!important;text-shadow:0 0 14px #ff9cde33!important}
+.site-announcement{--announcement-color:#ff9cde!important}
+.floating-menu-button{border-color:#ff9cde44!important;color:#fff8ff!important;background:linear-gradient(145deg,#2b1738,#120b18)!important;box-shadow:0 14px 40px #000b,0 0 28px #ff9cde1c!important}
+.floating-menu-button:hover{border-color:#ff9cdeaa!important;box-shadow:0 18px 46px #000c,0 0 32px #ff9cde33!important}
+.reviews-head h2,.review-top h3,.review-submit h3{color:#fff8ff!important}
+.reviews-head p{color:#d5c0d9!important}
+.review-card{border-color:#ff9cde2e!important;background:linear-gradient(145deg,#25152f,#160d1d)!important;box-shadow:0 16px 42px #0007!important}
+.review-card:hover{border-color:#ff9cde66!important;box-shadow:0 20px 48px #0009!important}
+.review-avatar{background:linear-gradient(135deg,#ff9cde,#a86fdf)!important;color:#180b1c!important}
+.review-top p{color:#d5c0d9!important}
+.review-stars{color:#ff9cde!important}
+.review-text{color:#fff1fb!important}
+.review-card small{color:#c6a8cc!important}
+.review-submit{border-color:#ff9cde33!important;background:#180d20!important}
+.primary{background:linear-gradient(135deg,#ff9cde,#a86fdf)!important;color:#180b1c!important;box-shadow:0 10px 26px #ff9cde22!important}
+.secondary{border-color:#ff9cde44!important;color:#f3d8ed!important}
+.mobile-menu{border-color:#ff9cde55!important;background:rgba(13,8,21,.97)!important;box-shadow:0 24px 70px #000c,0 0 35px #ff9cde18!important}
+.mobile-menu .menu-item:hover{border-color:#ff9cde88!important;background:#ff9cde12!important}
+.mobile-menu .menu-item>span:first-of-type{color:#f3d8ed!important}
+@media(max-width:600px){.floating-menu-button{border-color:#ff9cde55!important}}
