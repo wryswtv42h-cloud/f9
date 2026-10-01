@@ -1,12 +1,12 @@
 "use strict";
-const $=s=>document.querySelector(s),app=$("#app"),modal=$("#modal"),mc=$("#modal-content"),menu=$("#menu"),mobile=$("#mobile-menu"),adminLink=document.querySelector('[data-page="admin"]');
+const $=s=>document.querySelector(s),app=$("#app"),modal=$("#modal"),mc=$("#modal-content"),menu=$("#menu"),mobile=$("#mobile-menu"),adminLink=document.querySelector('#admin-nav');
 const fallback="https://cdn.discordapp.com/attachments/1398447508463550578/1550544040401829888/IMG_0577.jpg?ex=6ab54faa&is=6ab3fe2a&hm=a259fd1df3cbee263e02c29b2d4e9cee75036f43cef9fe85ad23d79573c0c23f";
 const esc=v=>String(v??"").replace(/[&<>"']/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c]));
 const num=v=>new Intl.NumberFormat("ar-SA").format(Number(v)||0);
 const avatar=m=>m?.avatar||fallback;
 let auth=localStorage.getItem("mld_token")||"", me=null, current="home";
 const api=async(u,o={})=>{const h={"Content-Type":"application/json",...(o.headers||{})};if(auth)h.Authorization="Bearer "+auth;const r=await fetch(u,{...o,headers:h,cache:"no-store"}),d=await r.json().catch(()=>({}));if(!r.ok)throw Error(d.error||"تعذر تنفيذ الطلب");return d};
-function notify(t){const x=$("#toast");x.textContent=t;x.classList.add("show");clearTimeout(x._t);x._t=setTimeout(()=>x.classList.remove("show"),2600)}
+function setAdminNav(){const ok=!!me&&["owner","admin"].includes(me.role);document.querySelectorAll('[data-page="admin"]').forEach(x=>x.style.display=ok?"":"none")}function notify(t){const x=$("#toast");x.textContent=t;x.classList.add("show");clearTimeout(x._t);x._t=setTimeout(()=>x.classList.remove("show"),2600)}
 function openModal(html){mc.innerHTML=html;modal.classList.remove("hidden");document.body.classList.add("modal-open")}
 function closeModal(){modal.classList.add("hidden");document.body.classList.remove("modal-open")}
 function btn(t,a,c="primary"){return '<button type="button" class="'+c+'" data-action="'+a+'">'+t+"</button>"}
@@ -42,7 +42,7 @@ const pages={home,members,games,groups,cinema,reviews,tickets,applications,chat,
 function page(p){current=p;mobile.classList.remove("open");menu.setAttribute("aria-expanded","false");(pages[p]||home)();history.replaceState(null,"","#"+p)}
 document.addEventListener("click",async e=>{const p=e.target.closest("[data-page]");if(p){e.preventDefault();return page(p.dataset.page)}const b=e.target.closest("[data-action]");if(!b)return;const a=b.dataset.action;try{
 if(a==="login-modal")return authModal(false);if(a==="register-modal")return authModal(true);if(a==="logout"){await api("/api/auth/logout",{method:"POST"});auth="";me=null;localStorage.removeItem("mld_token");notify("تم تسجيل الخروج");return page("home")}
-if(a==="login-submit"){const d=await api("/api/auth/login",{method:"POST",body:JSON.stringify({username:$("#auth-user").value,password:$("#auth-pass").value})});auth=d.token;me=d.user;localStorage.setItem("mld_token",auth);if(adminLink)adminLink.style.display=["owner","admin"].includes(me.role)?"":"none";closeModal();notify("تم تسجيل الدخول");return page("account")}
+if(a==="login-submit"){const d=await api("/api/auth/login",{method:"POST",body:JSON.stringify({username:$("#auth-user").value,password:$("#auth-pass").value})});auth=d.token;me=d.user;localStorage.setItem("mld_token",auth);setAdminNav();closeModal();notify("تم تسجيل الدخول");return page("account")}
 if(a==="register-submit"){await api("/api/auth/register",{method:"POST",body:JSON.stringify({username:$("#auth-user").value,password:$("#auth-pass").value,discordUsername:$("#auth-discord").value})});window._register={username:$("#auth-user").value};return verifyModal()}
 if(a==="verify-submit"){const d=await api("/api/auth/verify",{method:"POST",body:JSON.stringify({code:$("#verify-code").value})});auth=d.token;me=d.user;if(adminLink)adminLink.style.display=["owner","admin"].includes(me.role)?"":"none";localStorage.setItem("mld_token",auth);closeModal();notify("تم إنشاء الحساب والتحقق");return page("account")}
 if(a==="create-game")return createGame();if(a==="submit-game"){const d=await api("/api/games/sessions",{method:"POST",body:JSON.stringify({game:$("#game-name").value,min:Number($("#game-min").value),max:Number($("#game-max").value)})});closeModal();notify("تم إنشاء الجلسة");return games()}
@@ -68,9 +68,9 @@ if(a==="refresh-members")return loadMembers($("#member-search")?.value||"");
 if(pages[a])return page(a);
 }catch(err){notify(err.message)}
 });
-menu.onclick=()=>{const o=mobile.classList.toggle("open");menu.setAttribute("aria-expanded",String(o))};
+menu.addEventListener("click",e=>{e.preventDefault();e.stopPropagation();const o=!mobile.classList.contains("open");mobile.classList.toggle("open",o);menu.setAttribute("aria-expanded",String(o));});
 $("#close").onclick=closeModal;modal.onclick=e=>{if(e.target===modal)closeModal()};document.onkeydown=e=>{if(e.key==="Escape")closeModal()};
 async function loadSettings(){try{const d=await api("/api/settings"),x=$("#announcement");if(x){x.textContent=d.announcement||"";x.style.setProperty("--announcement-color",d.announcementColor||"#ff9cdc")}}catch{}}
 async function server(){try{const d=await api("/api/public/server");const n=$("#server-name"),c=$("#server-count"),s=$("#server-status");if(n)n.textContent=d.name||"MLD";if(c)c.textContent=num(d.memberCount);if(s){s.textContent="● متصل";s.className="online"}const set=(id,v,l)=>{const x=$(id);if(x)x.innerHTML=num(v)+"<small>"+l+"</small>"};set("#hs-members",d.memberCount,"عضو");set("#hs-online",d.online,"متصل الآن");set("#hs-visits",d.visits,"زيارة");if($("#home-live"))$("#home-live").textContent="آخر تحديث: "+new Date().toLocaleTimeString("ar-SA");if(d.invite)$("#invite-mobile").href=d.invite}catch{}}
-async function boot(){try{const d=await api("/api/auth/me");if(d.user)me=d.user}catch{}if(adminLink)adminLink.style.display=me&&["owner","admin"].includes(me.role)?"":"none";$("#year").textContent=new Date().getFullYear();await loadSettings();await server();page((location.hash||"#home").slice(1));setInterval(server,15000);setInterval(loadSettings,30000)}
+async function boot(){try{const d=await api("/api/auth/me");if(d.user)me=d.user}catch{}setAdminNav();$("#year").textContent=new Date().getFullYear();await loadSettings();await server();page((location.hash||"#home").slice(1));setInterval(server,15000);setInterval(loadSettings,30000)}
 boot();
