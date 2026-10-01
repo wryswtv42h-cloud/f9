@@ -12,6 +12,57 @@ async function refresh(){try{const [sr,rr]=await Promise.all([fetch("/api/public
 async function searchMembers(){clearTimeout(timer);const q=search.value.trim();if(!q){renderMembers(all);setStatus(`${num(all.length)} عضو`);return}setStatus("جاري البحث...");timer=setTimeout(async()=>{const d=await fetch(`/api/public/members?q=${encodeURIComponent(q)}`).then(r=>r.json());renderMembers(d.members||[]);setStatus(`${num((d.members||[]).length)} نتيجة`)},250)}
 function contentHeader(name,sub){title.textContent=name;subtitle.textContent=sub;searchWrap.style.display="none";}
 function requireLoginMessage(){return !currentUser?"سجل الدخول أولًا لإضافة المحتوى":""}
+let chatSocket=null,chatRooms={},activeChatRoom="general";
+function chatBubble(m,self){return `<div class="chat-msg ${self?"mine":""}"><div class="chat-msg-meta">${esc(m.userName)} · ${new Date(m.createdAt).toLocaleTimeString("ar-SA",{hour:"2-digit",minute:"2-digit"})}</div><div class="chat-msg-text">${esc(m.text)}</div></div>`}
+async function chatView(){
+  if(!currentUser)return authView();
+  title.textContent="الشات";subtitle.textContent="شات عام مباشر + محادثات خاصة متعددة الأشخاص";searchWrap.style.display="none";content.className="chat-page";
+  const r=await fetch("/api/chat/rooms",{headers:authHeaders()}),d=await r.json();if(!r.ok){content.innerHTML=`<div class="message-box">${esc(d.error||"تعذر فتح الشات")}</div>`;return}
+  chatRooms={general:d.general,...Object.fromEntries((d.rooms||[]).map(x=>[x.id,x]))};activeChatRoom=activeChatRoom&&chatRooms[activeChatRoom]?activeChatRoom:"general";
+  content.innerHTML=`<div class="chat-shell"><aside class="chat-sidebar"><div class="chat-sidebar-head"><div><p class="eyebrow">MLD CHAT</p><h3>المحادثات</h3></div><button id="new-chat-room" class="primary">＋ خاص</button></div><button class="chat-room-item active" data-room="general"><span class="chat-room-icon">🌐</span><span><b>الشات العام</b><small>كل أعضاء الموقع</small></span></button><div id="private-room-list">${(d.rooms||[]).map(roomItem).join("")}</div></aside><main class="chat-main"><header class="chat-head"><div><p class="eyebrow">LIVE</p><h2 id="chat-room-title"></h2><span id="chat-room-members" class="muted"></span></div><div id="chat-room-actions"></div></header><div id="chat-messages" class="chat-messages"></div><form id="chat-form" class="chat-compose"><input id="chat-input" maxlength="4000" autocomplete="off" placeholder="اكتب رسالتك..."><button class="primary" type="submit">إرسال</button></form></main></div>`;
+  document.querySelectorAll(".chat-room-item").forEach(b=>b.onclick=()=>selectChatRoom(b.dataset.room));
+  $("#new-chat-room").onclick=newChatRoom;
+  renderChatRoom(activeChatRoom);connectChatSocket();
+}
+function roomItem(r){return `<button class="chat-room-item" data-room="${esc(r.id)}"><span class="chat-room-icon">👥</span><span><b>${esc(r.name)}</b><small>${num((r.members||[]).length)} أعضاء</small></span></button>`}
+function renderChatRoom(id){
+  const r=chatRooms[id];if(!r)return;activeChatRoom=id;
+  document.querySelectorAll(".chat-room-item").forEach(b=>b.classList.toggle("active",b.dataset.room===id));
+  $("#chat-room-title").textContent=r.name;$("#chat-room-members").textContent=r.type==="general"?"مفتوح لكل الأعضاء":num((r.members||[]).length)+" أعضاء";
+  $("#chat-messages").innerHTML=(r.messages||[]).map(m=>chatBubble(m,m.userId===currentUser.id)).join("")||'<div class="chat-empty">ابدأ المحادثة 👋</div>';
+  const actions=$("#chat-room-actions");actions.innerHTML=r.type==="private"?`<button id="manage-chat-room" class="owner-tab">إدارة المحادثة</button>${r.ownerId!==currentUser.id?'<button id="leave-chat-room" class="danger">مغادرة</button>':""}`:"";
+  if($("#manage-chat-room"))$("#manage-chat-room").onclick=()=>manageChatRoom(r);
+  if($("#leave-chat-room"))$("#leave-chat-room").onclick=async()=>{await fetch("/api/chat/rooms/"+r.id+"/leave",{method:"POST",headers:authHeaders()});await chatView()};
+  const box=$("#chat-messages");if(box)box.scrollTop=box.scrollHeight;
+}
+function connectChatSocket(){
+  if(chatSocket)chatSocket.disconnect();
+  chatSocket=io({auth:{sessionId}});
+  chatSocket.on("chat:room",r=>{chatRooms[r.id]=r;if(r.id===activeChatRoom)renderChatRoom(r.id);else{const el=$("#private-room-list");if(el&&!document.querySelector(`[data-room="${CSS.escape(r.id)}"]`)){el.insertAdjacentHTML("beforeend",roomItem(r));document.querySelector(`[data-room="${CSS.escape(r.id)}"]`).onclick=()=>selectChatRoom(r.id)}}});
+  chatSocket.on("chat:general",m=>{chatRooms.general.messages.push(m);if(activeChatRoom==="general")renderChatRoom("general")});
+  chatSocket.on("chat:message",m=>{const id=Object.keys(chatRooms).find(k=>chatRooms[k].members?.some(x=>x.id===m.userId)&&chatRooms[k].messages?.find(x=>x.id===m.id));if(activeChatRoom!=="general"){const r=chatRooms[activeChatRoom];if(r){r.messages.push(m);renderChatRoom(activeChatRoom)}}});
+  chatSocket.on("chat:deleted",id=>{delete chatRooms[id];if(activeChatRoom===id)selectChatRoom("general");});
+  document.querySelectorAll(".chat-room-item").forEach(b=>b.onclick=()=>selectChatRoom(b.dataset.room));
+}
+function selectChatRoom(id){if(!chatRooms[id])return;activeChatRoom=id;if(chatSocket)chatSocket.emit("chat:join",id);renderChatRoom(id)}
+async function sendChatMessage(){
+  const input=$("#chat-input"),text=input.value.trim();if(!text)return;
+  const path=activeChatRoom==="general"?"/api/chat/general/message":"/api/chat/rooms/"+activeChatRoom+"/message";
+  const r=await fetch(path,{method:"POST",headers:{"Content-Type":"application/json",...authHeaders()},body:JSON.stringify({text})}),d=await r.json();if(r.ok)input.value="";else alert(d.error||"تعذر إرسال الرسالة");
+}
+async function newChatRoom(){
+  const u=await fetch("/api/chat/users",{headers:authHeaders()}).then(r=>r.json());if(!u.users?.length){alert("لا يوجد أعضاء آخرون حاليًا");return}
+  const name=prompt("اسم المحادثة الخاصة","محادثة خاصة");if(name===null)return;
+  const picked=u.users.filter(x=>confirm("إضافة "+x.username+" إلى المحادثة؟"));if(!picked.length){alert("اختر شخصًا واحدًا على الأقل");return}
+  const r=await fetch("/api/chat/rooms",{method:"POST",headers:{"Content-Type":"application/json",...authHeaders()},body:JSON.stringify({name,memberIds:picked.map(x=>x.id)})}),d=await r.json();if(!r.ok)return alert(d.error);chatRooms[d.room.id]=d.room;activeChatRoom=d.room.id;chatView();
+}
+async function manageChatRoom(r){
+  if(r.ownerId!==currentUser.id&&currentUser.role!=="owner"){alert("مالك المحادثة فقط");return}
+  const name=prompt("اسم المحادثة",r.name);if(name===null)return;
+  const u=await fetch("/api/chat/users",{headers:authHeaders()}).then(x=>x.json());
+  const ids=[];for(const x of u.users||[]){if(x.id===currentUser.id||r.members.some(m=>m.id===x.id)){if(confirm((r.members.some(m=>m.id===x.id)?"إبقاء ":"إضافة ")+x.username+"؟"))ids.push(x.id)}}
+  const rr=await fetch("/api/chat/rooms/"+r.id,{method:"PATCH",headers:{"Content-Type":"application/json",...authHeaders()},body:JSON.stringify({name,memberIds:ids})}),d=await rr.json();if(!rr.ok)alert(d.error);else{chatRooms[r.id]=d.room;chatView()}
+}
 async function jokesView(){
   contentHeader("النكت","شارك نكتتك مع مجتمع MLD.");
   content.className="message-page";
@@ -58,7 +109,7 @@ async function ownerContentTab(tab){
   document.querySelectorAll(".owner-edit-content").forEach(b=>b.onclick=async()=>{const item=items.find(x=>x.id===b.dataset.id);if(!item)return;const patch={};if(tab==="stories"){const nt=prompt("عنوان القصة",item.title||"");if(nt===null)return;const nc=prompt("نص القصة",item.text||"");if(nc===null)return;patch.title=nt;patch.text=nc;patch.cover=prompt("رابط الغلاف",item.cover||"")??item.cover}else{const nt=prompt(tab==="jokes"?"النكتة":"الرأي",item.text||"");if(nt===null)return;patch.text=nt;if(tab==="jokes")patch.category=prompt("التصنيف",item.category||"عام")??item.category;if(tab==="reviews")patch.rating=Number(prompt("التقييم 1-5",item.rating||5))||item.rating}await ownerContentPatch(tab,b.dataset.id,patch);ownerContentTab(tab)});
 }
 async function ownerContentPatch(kind,id,body){const path={jokes:"jokes",reviews:"reviews",stories:"stories"}[kind];const r=await fetch("/api/"+path+"/"+id,{method:"PATCH",headers:{"Content-Type":"application/json",...authHeaders()},body:JSON.stringify(body)});const d=await r.json();if(!r.ok)alert(d.error);else auditToast("تم تحديث المحتوى ✓")}
-async function change(v){view=v;mobile.classList.remove("open");if(v==="home"){window.scrollTo({top:0,behavior:"smooth"});title.textContent="أعضاء المجتمع";subtitle.textContent="كل الأعضاء والبيانات تتحدث تلقائيًا.";searchWrap.style.display="flex";return refresh()}if(v==="login"){return currentUser?simpleView("account"):authView()}if(["games","groups","tickets","application","admin","account","jokes","reviews","stories"].includes(v)){if(v==="tickets"){if(!currentUser)return authView();return ticketsView()}if(v==="admin"&&!currentUser)return authView();if(v==="application"){if(!currentUser)return authView();return applicationView()}if(v==="admin"){return adminView()}if(v==="jokes")return jokesView();if(v==="reviews")return reviewsView();if(v==="stories"){return storiesView()}return simpleView(v)}if(v==="message")return messageView();searchWrap.style.display=v==="members"?"flex":"none";title.textContent=v==="members"?"أعضاء المجتمع":v==="roles"?"الرتب القيادية الست":"لوحة TOP";if(v==="members")return refresh();if(v==="roles")return refresh();renderTop(await fetch("/api/public/top").then(r=>r.json()));setStatus("تحديث مباشر للنشاط")}
+async function change(v){view=v;mobile.classList.remove("open");if(v==="home"){window.scrollTo({top:0,behavior:"smooth"});title.textContent="أعضاء المجتمع";subtitle.textContent="كل الأعضاء والبيانات تتحدث تلقائيًا.";searchWrap.style.display="flex";return refresh()}if(v==="login"){return currentUser?simpleView("account"):authView()}if(["games","groups","tickets","application","admin","account","jokes","reviews","stories"].includes(v)){if(v==="tickets"){if(!currentUser)return authView();return ticketsView()}if(v==="admin"&&!currentUser)return authView();if(v==="application"){if(!currentUser)return authView();return applicationView()}if(v==="admin"){return adminView()}if(v==="chat")return chatView();if(v==="jokes")return jokesView();if(v==="reviews")return reviewsView();if(v==="stories"){return storiesView()}return simpleView(v)}if(v==="message")return messageView();searchWrap.style.display=v==="members"?"flex":"none";title.textContent=v==="members"?"أعضاء المجتمع":v==="roles"?"الرتب القيادية الست":"لوحة TOP";if(v==="members")return refresh();if(v==="roles")return refresh();renderTop(await fetch("/api/public/top").then(r=>r.json()));setStatus("تحديث مباشر للنشاط")}
 
 let sessionId=localStorage.getItem("mld_session")||"", currentUser=null;
 function authHeaders(){return sessionId?{"X-Session-Id":sessionId}:{}}
