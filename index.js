@@ -27,7 +27,7 @@ function logEvent(req,type,data={}){
 app.use("/api",(req,res,next)=>{const original=req.body;res.on("finish",()=>{if(req.path.startsWith("/auth/login")||req.path.startsWith("/auth/register")||req.path.startsWith("/auth/verify"))return;logEvent(req,"api",{status:res.statusCode,body:{...original,password:undefined,code:undefined}})});next()});
 function id(){return crypto.randomBytes(9).toString("hex")}
 function token(){return crypto.randomBytes(32).toString("hex")}
-function safeUser(u){return {id:u.id,username:u.username,discordUsername:u.discordUsername,displayName:u.displayName,role:u.role,avatar:u.avatar,disabled:!!u.disabled}}
+function safeUser(u){return {id:u.id,username:u.username,discordUsername:u.discordUsername,displayName:u.displayName,role:u.role,avatar:u.avatar,bio:u.bio||"",disabled:!!u.disabled}}
 function current(req){const t=req.headers.authorization?.replace(/^Bearer\s+/,"");return t?sessions.get(t)||null:null}
 function requireAuth(req,res,next){const u=current(req);if(!u)return res.status(401).json({error:"سجّل الدخول أولاً"});req.user=u;next()}
 function requireOwner(req,res,next){if(!req.user||req.user.role!=="owner")return res.status(403).json({error:"هذا الإجراء للمالك فقط"});next()}
