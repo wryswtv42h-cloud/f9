@@ -5,6 +5,9 @@ const path = require("path");
 const express = require("express");
 const cors = require("cors");
 const { Client, GatewayIntentBits, EmbedBuilder } = require("discord.js");
+const bcrypt = require("bcryptjs");
+const crypto = require("crypto");
+const fs = require("fs");
 
 const token = process.env.DISCORD_BOT_TOKEN;
 const guildId = process.env.DISCORD_GUILD_ID;
@@ -30,6 +33,15 @@ app.disable("x-powered-by");
 app.use(cors());
 app.use(express.json({ limit: "20kb" }));
 app.use(express.static(path.join(__dirname, "public")));
+
+const ACCOUNTS_FILE = path.join(__dirname, "accounts.json");
+const sessions = new Map();
+function readAccounts(){ try { return JSON.parse(fs.readFileSync(ACCOUNTS_FILE,"utf8")); } catch { return []; } }
+function writeAccounts(a){ fs.writeFileSync(ACCOUNTS_FILE, JSON.stringify(a,null,2)); }
+function sessionUser(req){ const id=req.headers["x-session-id"]; return id ? sessions.get(id) : null; }
+function safeUser(a){ return a && {id:a.id,username:a.username,discordUsername:a.discordUsername,role:a.role,createdAt:a.createdAt}; }
+function findDiscordMember(username,members){ const q=String(username||"").trim().replace(/^@/,"").toLocaleLowerCase("ar"); return members.find(m => [m.user.username,m.user.globalName,m.displayName,m.user.tag].filter(Boolean).some(v=>String(v).toLocaleLowerCase("ar")===q || String(v).toLocaleLowerCase("ar").startsWith(q+"#"))); }
+
 
 const leadershipRoleIds = [
   "1530712642384040027", // Owner
@@ -192,6 +204,57 @@ function sortedMemberJson(members) {
     .map(memberJson);
 }
 
+app.post("/api/auth/register", async (req,res)=>{
+  const username=String(req.body?.username||"").trim();
+  const password=String(req.body?.password||"");
+  const discordUsername=String(req.body?.discordUsername||"").trim();
+  if(!/^[\u0600-\u06FFa-zA-Z0-9_.-]{3,32}$/.test(username)) return res.status(400).json({error:"اسم المستخدم غير صالح"});
+  if(password.length<8) return res.status(400).json({error:"كلمة المرور يجب أن تكون 8 أحرف على الأقل"});
+  if(!discordUsername) return res.status(400).json({error:"أدخل يوزر Discord"});
+  const accounts=readAccounts();
+  if(accounts.some(a=>a.username.toLowerCase()===username.toLowerCase())) return res.status(409).json({error:"اسم المستخدم مستخدم بالفعل"});
+  if(accounts.some(a=>a.discordUsername.toLowerCase()===discordUsername.toLowerCase())) return res.status(409).json({error:"حساب Discord مرتبط بحساب آخر"});
+  try{
+    const guild=await getGuild(), members=await getAllMembers(guild), member=findDiscordMember(discordUsername,members);
+    if(!member) return res.status(403).json({error:"حساب Discord غير موجود في السيرفر"});
+    const code=String(crypto.randomInt(100000,1000000));
+    await member.send({embeds:[new EmbedBuilder().setTitle("تأكيد حساب MLD").setDescription(`رمز تأكيد تسجيل الحساب: **${code}**\nلا تشارك هذا الرمز مع أي شخص.`).setColor("#ff9cdc").setFooter({text:"MLD Community"})]});
+    const pendingId=crypto.randomUUID();
+    sessions.set(pendingId,{type:"pending",username,passwordHash:await bcrypt.hash(password,12),discordUsername,discordId:member.id,code,expiresAt:Date.now()+10*60*1000});
+    res.json({ok:true,pendingId,message:"تم إرسال رمز التأكيد إلى الخاص في Discord"});
+  }catch(e){ console.error("Register:",e); res.status(500).json({error:"تعذر إرسال رمز التأكيد. تأكد أن الخاص مفتوح في Discord"}); }
+});
+app.post("/api/auth/verify", async (req,res)=>{
+  const p=sessions.get(String(req.body?.pendingId||"")); const code=String(req.body?.code||"").trim();
+  if(!p || p.type!=="pending" || p.expiresAt<Date.now()) return res.status(400).json({error:"انتهت صلاحية طلب التسجيل"});
+  if(p.code!==code) return res.status(400).json({error:"رمز التأكيد غير صحيح"});
+  const accounts=readAccounts();
+  const id=crypto.randomUUID();
+  const role=accounts.length===0 && process.env.OWNER_USERNAME && p.username===process.env.OWNER_USERNAME ? "owner" : "member";
+  const account={id,username:p.username,passwordHash:p.passwordHash,discordUsername:p.discordUsername,discordId:p.discordId,role,createdAt:new Date().toISOString()};
+  accounts.push(account); writeAccounts(accounts); sessions.delete(String(req.body.pendingId));
+  const sid=crypto.randomUUID(); sessions.set(sid,{type:"auth",accountId:id});
+  res.json({ok:true,sessionId:sid,user:safeUser(account)});
+});
+app.post("/api/auth/login", async (req,res)=>{
+  const username=String(req.body?.username||"").trim(), password=String(req.body?.password||"");
+  const account=readAccounts().find(a=>a.username.toLowerCase()===username.toLowerCase());
+  if(!account || !(await bcrypt.compare(password,account.passwordHash))) return res.status(401).json({error:"اسم المستخدم أو كلمة المرور غير صحيحة"});
+  try{
+    const member=await (await getGuild()).members.fetch(account.discordId).catch(()=>null);
+    if(!member) return res.status(403).json({error:"حسابك لم يعد عضوًا في السيرفر"});
+    const sid=crypto.randomUUID(); sessions.set(sid,{type:"auth",accountId:account.id});
+    res.json({ok:true,sessionId:sid,user:safeUser(account)});
+  }catch(e){res.status(503).json({error:"تعذر التحقق من عضويتك في Discord"});}
+});
+app.post("/api/auth/logout",(req,res)=>{sessions.delete(String(req.headers["x-session-id"]||""));res.json({ok:true});});
+app.get("/api/auth/me",async(req,res)=>{
+  const s=sessionUser(req), account=s?.type==="auth" ? readAccounts().find(a=>a.id===s.accountId) : null;
+  if(!account) return res.status(401).json({error:"غير مسجل"});
+  const member=await (await getGuild()).members.fetch(account.discordId).catch(()=>null);
+  if(!member) return res.status(403).json({error:"لم تعد عضوًا في السيرفر"});
+  res.json({user:safeUser(account)});
+});
 app.get("/health", (req, res) => {
   res.json({
     ok: true,
