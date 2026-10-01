@@ -10,16 +10,17 @@ const defaultReviews=[
   {name:"ريم",username:"@reem",rank:"عضو",text:"واجهة جميلة جدًا، والألوان متناسقة مع هوية MLD."},
   {name:"خالد",username:"@khaled",rank:"عضو",text:"أفضل شيء أن بيانات السيرفر تتحدث قدامي بدون تعقيد."}
 ];
-function renderReviews(){
+async function renderReviews(){
   if(view!=="home") return;
-  const start=Math.floor(Date.now()/5000)%defaultReviews.length;
-  const list=[0,1,2].map(i=>defaultReviews[(start+i)%defaultReviews.length]);
-  searchWrap.style.display="none";
-  title.textContent="آراء الناس";
-  subtitle.textContent="ثلاثة آراء تظهر جنب بعض وتتحدث تلقائيًا كل 5 ثوانٍ.";
+  searchWrap.style.display="none";title.textContent="آراء الناس";subtitle.textContent="آراء يضيفها أعضاء MLD بأنفسهم.";
+  let list=[];try{const d=await fetch("/api/platform/reviews").then(r=>r.json());list=d.reviews||[]}catch(e){}
+  const shown=list.slice(0,3);
   content.className="reviews-grid";
-  content.innerHTML=list.map((r,i)=>`<article class="review-card"><div class="review-top"><div class="review-avatar">${esc(r.name.slice(0,1))}</div><div><h3>${esc(r.name)}</h3><p>${esc(r.username)}</p></div><span class="review-stars">★★★★★</span></div><div class="review-rank">${esc(r.rank)}</div><p class="review-text">“${esc(r.text)}”</p><small>رأي من مجتمع MLD · ${i+1}/3</small></article>`).join("");
-  setStatus("تتحدث الآراء تلقائيًا");
+  content.innerHTML=shown.map((r,i)=>'<article class="review-card"><div class="review-top"><div class="review-avatar">'+esc((r.user?.displayName||"?").slice(0,1))+'</div><div><h3>'+esc(r.user?.displayName||r.user?.username||"عضو")+'</h3><p>@'+esc(r.user?.username||"")+'</p></div><span class="review-stars">'+("★".repeat(Number(r.rating)||5))+'</span></div><div class="review-rank">'+esc(r.user?.role||"عضو")+'</div><p class="review-text">“'+esc(r.text)+'”</p><small>رأي من مجتمع MLD · '+(i+1)+'/3</small></article>').join("")||'<article class="review-card"><h3>كن أول من يشارك رأيه</h3><p class="review-text">ما فيه آراء منشورة حتى الآن.</p></article>';
+  const me=await fetch("/api/auth/me").then(r=>r.json()).catch(()=>({}));
+  if(me.authenticated)content.insertAdjacentHTML("beforeend",'<form id="review-form" class="review-submit"><textarea id="review-text" class="full" maxlength="600" placeholder="اكتب رأيك في مجتمع MLD..." required></textarea><select id="review-rating" class="full"><option value="5">★★★★★ ممتاز</option><option value="4">★★★★ جيد جدًا</option><option value="3">★★★ جيد</option><option value="2">★★ يحتاج تحسين</option><option value="1">★</option></select><button class="primary">إضافة رأيي</button><span id="review-status" class="muted"></span></form>');
+  const form=$("#review-form");if(form)form.onsubmit=async e=>{e.preventDefault();try{const r=await fetch("/api/platform/reviews",{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({text:$("#review-text").value,rating:$("#review-rating").value})});const d=await r.json();if(!r.ok)throw Error(d.error);await renderReviews()}catch(err){$("#review-status").textContent=err.message}};
+  setStatus(list.length?num(list.length)+" رأي منشور":"بانتظار أول رأي من الأعضاء");
 }
 function topSec(t,list,k,l){return `<section class="top-section"><h3>${t}</h3>${list.map((m,i)=>`<article class="top-card" data-member="${esc(m.id)}"><span class="rank">${i+1}</span><img src="${esc(avatar(m))}"><div><small>${l}</small><h4>${esc(m.name)}</h4><strong>${num(m.stats?.[k])}</strong></div></article>`).join("")||`<p class="muted">لا توجد بيانات بعد.</p>`}</section>`}function renderTop(d){content.className="top-grid";content.innerHTML=topSec("🏆 أكثر الرسائل",d.messages||[],"messages","رسالة")+topSec("💬 أكثر المنشنات",d.mentions||[],"mentionsReceived","منشن")+topSec("🎙️ وقت الصوت",d.voice||[],"voiceMinutes","دقيقة")+topSec("⚡ دخول صوتي",d.joins||[],"voiceJoins","دخول");bind()}
 function renderRoles(){content.className="role-grid";content.innerHTML=roles.map(r=>`<article class="role-card" data-role="${esc(r.id)}"><div class="role-top"><i style="background:${esc(r.color)}"></i><b>${num(r.membersCount)} عضو</b></div><h3>${esc(r.name)}</h3><div class="roles">${(r.permissions||[]).slice(0,4).map(p=>`<span class="permission">${esc(p)}</span>`).join("")||`<span class="muted">صلاحيات عادية</span>`}</div><small>عرض الأعضاء ↗</small></article>`).join("");bind()}
