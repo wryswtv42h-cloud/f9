@@ -3531,10 +3531,26 @@ async function renderBots() {
               <span class="member-tag">${b.modules?.length || 0} أنظمة</span>
             </div>
             <p class="muted">${(b.modules || []).map(x => esc(modules[x]?.name || x)).join(" · ")}</p>
+            <div class="form-row">
+              <button class="primary bot-runtime" data-id="${esc(b.id)}" data-action="${b.status==="online"||b.status==="starting"?"stop":"start"}">${b.status==="online"||b.status==="starting"?"إيقاف":"تشغيل"}</button>
+              <button class="primary bot-runtime" data-id="${esc(b.id)}" data-action="restart">إعادة تشغيل</button>
+              ${b.botId ? '<a class="primary" target="_blank" rel="noopener" href="https://discord.com/oauth2/authorize?client_id='+encodeURIComponent(b.botId)+'&scope=bot%20applications.commands&permissions=0">إضافة للسيرفر</a>' : ''}
+            </div>
           </article>
         `).join("") || '<p class="muted">ما عندك بوتات حتى الآن.</p>'}
       </div>
     </div>`;
+  content.querySelectorAll(".bot-runtime").forEach(btn => {
+    btn.onclick = async () => {
+      try {
+        await apiRequest("/api/platform/bots/"+encodeURIComponent(btn.dataset.id)+"/runtime", {
+          method:"PATCH",
+          body:JSON.stringify({action:btn.dataset.action})
+        });
+        await renderBots();
+      } catch(e) { setStatus(e.message); }
+    };
+  });
   $("#bot-create").onclick = async () => {
     const selected = [...content.querySelectorAll('input[name="bot-module"]:checked')].map(x => x.value);
     const statusEl = $("#bot-status");
