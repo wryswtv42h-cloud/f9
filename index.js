@@ -7,6 +7,7 @@ const bcrypt = require("bcryptjs");
 const express = require("express");
 const cors = require("cors");
 const { Client, GatewayIntentBits, EmbedBuilder, ActionRowBuilder, ButtonBuilder, ButtonStyle, PermissionsBitField } = require("discord.js");
+const GAME_ENGINE = require("./game-engine");
 
 const token = process.env.DISCORD_BOT_TOKEN;
 const guildId = process.env.DISCORD_GUILD_ID;
