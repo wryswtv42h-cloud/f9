@@ -21,7 +21,8 @@ const client = new Client({
     GatewayIntentBits.GuildMembers,
     GatewayIntentBits.GuildMessages,
     GatewayIntentBits.MessageContent,
-    GatewayIntentBits.GuildVoiceStates
+    GatewayIntentBits.GuildVoiceStates,
+    GatewayIntentBits.GuildPresences
   ]
 });
 
@@ -29,6 +30,13 @@ const app = express();
 app.disable("x-powered-by");
 app.use(cors());
 app.use(express.json({ limit: "20kb" }));
+
+// كل تحميل فعلي للصفحة الرئيسية = زيارة واحدة.
+app.use((req, res, next) => {
+  if (req.method === "GET" && req.path === "/") siteVisits += 1;
+  next();
+});
+
 app.use(express.static(path.join(__dirname, "public")));
 
 const leadershipRoleIds = [
@@ -62,6 +70,7 @@ const importantPermissionNames = new Set([
 const activity = new Map();
 const voiceSessions = new Map();
 const sendHits = new Map();
+let siteVisits = 0;
 
 let guildCache = null;
 let guildCacheAt = 0;
@@ -211,6 +220,8 @@ app.get("/api/public/server", async (req, res) => {
       icon: guild.iconURL({ extension: "png", size: 256 }),
       memberCount: guild.memberCount,
       ownerName: process.env.SERVER_FOUNDER_NAME || "فهد المطيري",
+      onlineCount: (await getAllMembers(guild)).filter((member) => member.presence?.status && member.presence.status !== "offline").length,
+      visits: siteVisits,
       invite: process.env.DISCORD_INVITE_URL || ""
     });
   } catch (error) {
