@@ -11,6 +11,7 @@ const defaultReviews=[
   {name:"خالد",username:"@khaled",rank:"عضو",text:"أفضل شيء أن بيانات السيرفر تتحدث قدامي بدون تعقيد."}
 ];
 function renderReviews(){
+  if(view!=="home") return;
   const start=Math.floor(Date.now()/5000)%defaultReviews.length;
   const list=[0,1,2].map(i=>defaultReviews[(start+i)%defaultReviews.length]);
   searchWrap.style.display="none";
