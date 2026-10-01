@@ -21,7 +21,7 @@ async function chatView(){
   chatRooms={general:d.general,...Object.fromEntries((d.rooms||[]).map(x=>[x.id,x]))};activeChatRoom=activeChatRoom&&chatRooms[activeChatRoom]?activeChatRoom:"general";
   content.innerHTML=`<div class="chat-shell"><aside class="chat-sidebar"><div class="chat-sidebar-head"><div><p class="eyebrow">MLD CHAT</p><h3>المحادثات</h3></div><button id="new-chat-room" class="primary">＋ خاص</button></div><button class="chat-room-item active" data-room="general"><span class="chat-room-icon">🌐</span><span><b>الشات العام</b><small>كل أعضاء الموقع</small></span></button><div id="private-room-list">${(d.rooms||[]).map(roomItem).join("")}</div></aside><main class="chat-main"><header class="chat-head"><div><p class="eyebrow">LIVE</p><h2 id="chat-room-title"></h2><span id="chat-room-members" class="muted"></span></div><div id="chat-room-actions"></div></header><div id="chat-messages" class="chat-messages"></div><form id="chat-form" class="chat-compose"><input id="chat-input" maxlength="4000" autocomplete="off" placeholder="اكتب رسالتك..."><button class="primary" type="submit">إرسال</button></form></main></div>`;
   document.querySelectorAll(".chat-room-item").forEach(b=>b.onclick=()=>selectChatRoom(b.dataset.room));
-  $("#new-chat-room").onclick=newChatRoom;
+  $("#new-chat-room").onclick=newChatRoom;$("#chat-form").onsubmit=e=>{e.preventDefault();sendChatMessage()};
   renderChatRoom(activeChatRoom);connectChatSocket();
 }
 function roomItem(r){return `<button class="chat-room-item" data-room="${esc(r.id)}"><span class="chat-room-icon">👥</span><span><b>${esc(r.name)}</b><small>${num((r.members||[]).length)} أعضاء</small></span></button>`}
@@ -40,7 +40,7 @@ function connectChatSocket(){
   chatSocket=io({auth:{sessionId}});
   chatSocket.on("chat:room",r=>{chatRooms[r.id]=r;if(r.id===activeChatRoom)renderChatRoom(r.id);else{const el=$("#private-room-list");if(el&&!document.querySelector(`[data-room="${CSS.escape(r.id)}"]`)){el.insertAdjacentHTML("beforeend",roomItem(r));document.querySelector(`[data-room="${CSS.escape(r.id)}"]`).onclick=()=>selectChatRoom(r.id)}}});
   chatSocket.on("chat:general",m=>{chatRooms.general.messages.push(m);if(activeChatRoom==="general")renderChatRoom("general")});
-  chatSocket.on("chat:message",m=>{const id=Object.keys(chatRooms).find(k=>chatRooms[k].members?.some(x=>x.id===m.userId)&&chatRooms[k].messages?.find(x=>x.id===m.id));if(activeChatRoom!=="general"){const r=chatRooms[activeChatRoom];if(r){r.messages.push(m);renderChatRoom(activeChatRoom)}}});
+  chatSocket.on("chat:message",m=>{const id=m.roomId;if(id&&chatRooms[id]){chatRooms[id].messages.push(m);if(activeChatRoom===id)renderChatRoom(id)}});
   chatSocket.on("chat:deleted",id=>{delete chatRooms[id];if(activeChatRoom===id)selectChatRoom("general");});
   document.querySelectorAll(".chat-room-item").forEach(b=>b.onclick=()=>selectChatRoom(b.dataset.room));
 }
