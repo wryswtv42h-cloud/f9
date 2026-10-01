@@ -215,3 +215,8 @@
 .reviews-head{display:flex!important;align-items:center!important;justify-content:space-between!important;gap:18px!important}
 #add-review-btn{display:inline-flex!important;align-items:center!important;justify-content:center!important;min-width:140px!important;min-height:46px!important;border:0!important;cursor:pointer!important}
 @media(max-width:700px){.reviews-head{align-items:stretch!important;flex-direction:column!important}.reviews-head #add-review-btn{width:100%!important}.floating-menu-button{right:14px!important}}
+
+/* Keep the home hero only on the home route; section navigation gets its own clean page view. */
+body.mld-non-home .hero,body.mld-non-home .server-strip{display:none!important}
+body.mld-non-home #directory{margin-top:42px!important}
+body.mld-non-home #directory .reviews-head{margin-bottom:12px!important}
