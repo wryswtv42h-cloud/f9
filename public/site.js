@@ -3904,7 +3904,6 @@ function routeFromHash() {
   const v = (location.hash || "#home").slice(1) || "home";
   Promise.resolve(change(v)).catch(err => showNavigationError(v, err));
 }
-}
 
 window.addEventListener(
   "hashchange",
