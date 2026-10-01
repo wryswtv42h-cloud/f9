@@ -3922,40 +3922,7 @@ async function mldNavigate(v) {
 
 window.MLDNavigate = mldNavigate;
 
-/*
- * إصلاح زر الثلاث خطوط بشكل مستقل.
- * حتى لو كان onclick الموجود في HTML
- * لا يعمل، هذا الربط يبقي القائمة قابلة للفتح.
- */
-const menuButton =
-  $("#floating-menu-button");
-
-if (menuButton && mobile) {
-  menuButton.addEventListener(
-    "click",
-    e => {
-      e.preventDefault();
-      e.stopPropagation();
-
-      const isOpen =
-        !mobile.classList.contains(
-          "open"
-        );
-
-      mobile.classList.toggle(
-        "open",
-        isOpen
-      );
-
-      menuButton.setAttribute(
-        "aria-expanded",
-        String(isOpen)
-      );
-    }
-  );
-}
-
-function routeFromHash() {
+/* Menu is wired once by index.html; avoid duplicate click handlers. */() {
   const v =
     (location.hash || "#home")
       .slice(1) ||
@@ -4106,3 +4073,61 @@ setInterval(
   },
   5000
 );
+
+
+/* ===== MLD UX HARDENING ===== */
+(function(){
+  const originalNavigate=window.MLDNavigate;
+  if(!originalNavigate)return;
+  let busy=false;
+  window.MLDNavigate=async function(v){
+    if(busy)return;
+    busy=true;
+    document.body.classList.add("mld-loading");
+    try{return await originalNavigate(v);}
+    finally{busy=false;document.body.classList.remove("mld-loading");}
+  };
+  window.addEventListener("pageshow",()=>document.body.classList.remove("mld-loading"));
+})();
+
+(function(){
+  const btn=document.getElementById("floating-menu-button");
+  const menu=document.getElementById("mobile-menu");
+  if(!btn||!menu)return;
+  btn.setAttribute("aria-controls","mobile-menu");
+  btn.setAttribute("aria-expanded",menu.classList.contains("open")?"true":"false");
+  const sync=()=>btn.setAttribute("aria-expanded",menu.classList.contains("open")?"true":"false");
+  const observer=new MutationObserver(sync);
+  observer.observe(menu,{attributes:true,attributeFilter:["class"]});
+})();
+
+/* Make transient status messages feel like a real app without changing the existing API. */
+(function(){
+  const s=document.getElementById("status");
+  if(!s)return;
+  const observer=new MutationObserver(()=>{
+    s.classList.remove("status-pop");
+    void s.offsetWidth;
+    s.classList.add("status-pop");
+  });
+  observer.observe(s,{childList:true,characterData:true,subtree:true});
+})();
+
+/* Refresh public Discord statistics independently from page navigation. */
+(function(){
+  async function refreshPublicStats(){
+    try{
+      const r=await fetch("/api/public/server?ts="+Date.now(),{cache:"no-store"});
+      const d=await r.json();
+      if(!r.ok)throw Error();
+      const set=(id,value)=>{const el=document.getElementById(id);if(el)el.textContent=num(value)};
+      const name=document.getElementById("server-name");if(name)name.textContent=d.name||"MLD";
+      set("server-count",d.memberCount);set("online-count",d.onlineCount);set("visit-count",d.visits);
+      document.documentElement.dataset.discordOnline="true";
+    }catch{
+      document.documentElement.dataset.discordOnline="false";
+    }
+  }
+  refreshPublicStats();
+  setInterval(refreshPublicStats,10000);
+})();
