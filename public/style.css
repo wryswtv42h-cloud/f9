@@ -53,3 +53,5 @@
 .mld-game-board.expanded{position:fixed;inset:8px;width:auto;height:auto;min-height:0;z-index:100;border-radius:18px;box-shadow:0 0 0 100vmax #000d}
 #game-exit-expanded{display:none;position:absolute;top:12px;left:12px;z-index:102}
 .mld-game-board.expanded #game-exit-expanded{display:block}
+
+.hub-options{display:grid;grid-template-columns:repeat(auto-fit,minmax(180px,1fr));gap:8px;margin:14px 0}.hub-options .primary,.hub-idea-vote{padding:10px 12px;font-size:12px}.hub-options .primary{white-space:normal}.platform-view .feature-grid{margin-bottom:18px}
