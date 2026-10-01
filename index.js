@@ -217,13 +217,27 @@ app.post("/api/auth/verify-signup",(req,res)=>{const username=cleanUsername(req.
 client.on("interactionCreate",async(interaction)=>{if(!interaction.isButton()||!interaction.customId.startsWith("mld_signup_confirm_"))return;const username=cleanUsername(interaction.customId.slice("mld_signup_confirm_".length));const p=pendingSignups.get(username);if(!p||Date.now()>p.expires){return interaction.reply({content:"انتهت صلاحية طلب التسجيل. ارجع للموقع وابدأ من جديد.",ephemeral:true})}if(interaction.user.id!==p.memberId)return interaction.reply({content:"هذا الزر مخصص لصاحب طلب التسجيل فقط.",ephemeral:true});p.confirmed=true;pendingSignups.set(username,p);await interaction.update({content:"تم تأكيد إنشاء حساب MLD بنجاح ✓ ارجع للموقع لإكمال الدخول.",components:[]});});
 app.post("/api/auth/logout",(req,res)=>{const token=req.headers.cookie?.match(/(?:^|;\s*)mld_session=([^;]+)/)?.[1];if(token)sessions.delete(token);res.setHeader("Set-Cookie","mld_session=; Path=/; HttpOnly; Secure; SameSite=Lax; Max-Age=0");res.json({ok:true})});
 
-// MLD platform modules (runtime store; use durable database before production scale).
+// MALADH platform modules (runtime store; use durable database before production scale).
 const platform = {
   publicChat: [], reviews: [], jokes: [], vents: [], stories: [],
   conversations: new Map(), tickets: new Map(), applications: new Map(), rooms: new Map(), groups: new Map(), audit: []
 };
 const newId = () => crypto.randomUUID();
 const nowIso = () => new Date().toISOString();
+
+platform.hubPolls = platform.hubPolls || [
+  {id:newId(),question:"وش تبون يكون محور الفعالية الجاية؟",options:["ليلة ألعاب","بطولة","جلسة سوالف","سينما"],votes:[0,0,0,0],voters:[]}
+];
+platform.hubEvents = platform.hubEvents || [];
+platform.hubIdeas = platform.hubIdeas || [];
+app.get("/api/platform/hub/polls",(req,res)=>res.json({items:platform.hubPolls.filter(x=>!x.closed)}));
+app.post("/api/platform/hub/polls/:id/vote",(req,res)=>{const u=needUser(req,res);if(!u)return;const p=platform.hubPolls.find(x=>x.id===req.params.id);const option=Number(req.body?.option);if(!p||!Number.isInteger(option)||option<0||option>=p.options.length)return res.status(400).json({error:"التصويت غير صالح"});if(p.voters.includes(u.username))return res.status(409).json({error:"صوّت مسبقًا"});p.voters.push(u.username);p.votes[option]+=1;audit(u,"vote","poll",p.id,{option});res.json({ok:true});});
+app.get("/api/platform/hub/events",(req,res)=>res.json({items:platform.hubEvents.filter(x=>new Date(x.startsAt)>new Date()).sort((a,b)=>new Date(a.startsAt)-new Date(b.startsAt)).slice(0,20)}));
+app.get("/api/platform/hub/ideas",(req,res)=>res.json({items:platform.hubIdeas.filter(x=>!x.deleted).slice(0,50)}));
+app.post("/api/platform/hub/ideas",(req,res)=>{const u=needUser(req,res);if(!u)return;const title=safeText(req.body?.title,120),text=safeText(req.body?.text,1000);if(title.length<3||text.length<4)return res.status(400).json({error:"اكتب عنوان وفكرة واضحة"});const item={id:newId(),title,text,user:publicProfile(u),votes:0,voters:[],createdAt:nowIso(),deleted:false};platform.hubIdeas.unshift(item);audit(u,"create","idea",item.id);res.json({ok:true,item});});
+app.post("/api/platform/hub/ideas/:id/vote",(req,res)=>{const u=needUser(req,res);if(!u)return;const item=platform.hubIdeas.find(x=>x.id===req.params.id);if(!item)return res.status(404).json({error:"الاقتراح غير موجود"});if(item.voters.includes(u.username))return res.status(409).json({error:"صوّت مسبقًا"});item.voters.push(u.username);item.votes+=1;audit(u,"vote","idea",item.id);res.json({ok:true});});
+app.get("/api/platform/hub/achievements",async(req,res)=>{const scores=new Map();for(const u of siteUsers.values())scores.set(u.username,{user:publicProfile(u),points:0,badge:"بداية الرحلة"});for(const m of platform.publicChat){if(m.user?.username&&scores.has(m.user.username))scores.get(m.user.username).points+=2}for(const r of platform.reviews){if(!r.deleted&&r.user?.username&&scores.has(r.user.username))scores.get(r.user.username).points+=5}for(const i of platform.hubIdeas){if(!i.deleted&&i.user?.username&&scores.has(i.user.username))scores.get(i.user.username).points+=4}res.json({items:[...scores.values()].sort((a,b)=>b.points-a.points).slice(0,30).map(x=>({...x,badge:x.points>=50?"MALADH LEGEND":x.points>=20?"MALADH ACTIVE":"MALADH MEMBER"}))});});
+
 function currentUser(req){ return sessionUser(req); }
 function needUser(req,res){ const u=currentUser(req); if(!u){res.status(401).json({error:"سجّل الدخول أولًا"});return null;} return u; }
 function needStaff(req,res){ const u=needUser(req,res); if(!u)return null; if(!["owner","admin"].includes(u.role)){res.status(403).json({error:"هذه الميزة للإدارة فقط"});return null;} return u; }
