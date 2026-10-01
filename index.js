@@ -2,6 +2,7 @@
 require("dotenv").config();
 
 const path = require("path");
+const crypto = require("crypto");
 const express = require("express");
 const cors = require("cors");
 const { Client, GatewayIntentBits, EmbedBuilder } = require("discord.js");
@@ -70,6 +71,9 @@ const importantPermissionNames = new Set([
 const activity = new Map();
 const voiceSessions = new Map();
 const sendHits = new Map();
+const siteUsers = new Map();
+const sessions = new Map();
+const pendingSignups = new Map();
 let siteVisits = 0;
 
 let guildCache = null;
@@ -201,6 +205,14 @@ function sortedMemberJson(members) {
     .map(memberJson);
 }
 
+function cleanUsername(value){return String(value||"").trim().toLowerCase().replace(/[^a-z0-9_\-]/g,"").slice(0,24)}
+function sessionUser(req){const token=req.headers.cookie?.match(/(?:^|;\\s*)mld_session=([^;]+)/)?.[1];return token?sessions.get(token)||null:null}
+function publicUser(u){return u?{username:u.username,displayName:u.displayName,discordUsername:u.discordUsername,role:u.role,createdAt:u.createdAt}:null}
+app.get("/api/auth/me",(req,res)=>res.json({authenticated:Boolean(sessionUser(req)),user:publicUser(sessionUser(req))}));
+app.post("/api/auth/login",async(req,res)=>{const username=cleanUsername(req.body?.username),password=String(req.body?.password||"");if(!username||!password)return res.status(400).json({error:"اكتب اسم المستخدم وكلمة المرور"});let u=siteUsers.get(username);if(!u&&username===cleanUsername(process.env.OWNER_USERNAME||"w4px")&&password===String(process.env.OWNER_PASSWORD||"")){u={username,displayName:process.env.OWNER_DISPLAY_NAME||"فهد المطيري",discordUsername:process.env.OWNER_DISCORD_USERNAME||"w4px",role:"owner",password,createdAt:new Date().toISOString()};siteUsers.set(username,u)}if(!u||u.password!==password)return res.status(401).json({error:"اسم المستخدم أو كلمة المرور غير صحيحة"});const token=crypto.randomBytes(32).toString("hex");sessions.set(token,u);res.setHeader("Set-Cookie","mld_session="+token+"; Path=/; HttpOnly; SameSite=Lax; Max-Age=604800");res.json({ok:true,user:publicUser(u)})});
+app.post("/api/auth/signup",async(req,res)=>{const username=cleanUsername(req.body?.username),password=String(req.body?.password||""),discordUsername=String(req.body?.discordUsername||"").trim();if(username.length<3||password.length<6||!discordUsername)return res.status(400).json({error:"اسم المستخدم 3 أحرف على الأقل وكلمة المرور 6 أحرف"});if(siteUsers.has(username))return res.status(409).json({error:"اسم المستخدم مستخدم بالفعل"});try{const guild=await getGuild(),members=await getAllMembers(guild),member=members.find(m=>m.user.username.toLowerCase()===discordUsername.toLowerCase()||String(m.user.globalName||"").toLowerCase()===discordUsername.toLowerCase());if(!member)return res.status(403).json({error:"يوزر الديسكورد غير موجود في السيرفر"});const code=String(Math.floor(100000+Math.random()*900000));pendingSignups.set(username,{username,password,discordUsername,memberId:member.id,code,expires:Date.now()+600000});try{await member.send("رمز تأكيد إنشاء حساب MLD: **"+code+"**\nإذا لم تطلب إنشاء الحساب تجاهل الرسالة.")}catch(e){pendingSignups.delete(username);return res.status(503).json({error:"تعذر إرسال رمز التأكيد للخاص في ديسكورد"})}res.json({ok:true,verificationRequired:true,message:"أرسلنا رمز التأكيد إلى الخاص في ديسكورد"})}catch(e){console.error("Signup:",e);res.status(503).json({error:"تعذر التحقق من عضو الديسكورد"})}});
+app.post("/api/auth/verify-signup",(req,res)=>{const username=cleanUsername(req.body?.username),code=String(req.body?.code||""),p=pendingSignups.get(username);if(!p||Date.now()>p.expires)return res.status(400).json({error:"انتهت صلاحية رمز التأكيد، أعد المحاولة"});if(p.code!==code)return res.status(400).json({error:"رمز التأكيد غير صحيح"});const u={username:p.username,displayName:p.username,discordUsername:p.discordUsername,discordId:p.memberId,role:"member",password:p.password,createdAt:new Date().toISOString()};siteUsers.set(username,u);pendingSignups.delete(username);const token=crypto.randomBytes(32).toString("hex");sessions.set(token,u);res.setHeader("Set-Cookie","mld_session="+token+"; Path=/; HttpOnly; SameSite=Lax; Max-Age=604800");res.json({ok:true,user:publicUser(u)})});
+app.post("/api/auth/logout",(req,res)=>{const token=req.headers.cookie?.match(/(?:^|;\\s*)mld_session=([^;]+)/)?.[1];if(token)sessions.delete(token);res.setHeader("Set-Cookie","mld_session=; Path=/; HttpOnly; SameSite=Lax; Max-Age=0");res.json({ok:true})});
 app.get("/health", (req, res) => {
   res.json({
     ok: true,
