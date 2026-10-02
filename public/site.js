@@ -17,14 +17,14 @@ const btn=(t,a,c="primary")=>'<button type="button" class="'+c+'" data-action="'
 const shell=(k,t,d,b)=>'<section class="page"><div class="page-head"><p class="eyebrow">'+k+'</p><h1>'+t+'</h1><p class="muted">'+d+"</p></div>"+b+"</section>";
 const requireLogin=fn=>me?fn():open('<div class="form-grid"><p class="eyebrow">MLD ACCOUNT</p><h2>تحتاج حساباً</h2><p class="muted">سجّل دخولك لإكمال هذه العملية.</p>'+btn("تسجيل الدخول","login")+' '+btn("إنشاء حساب","register","ghost")+"</div>");
 function nav(){
- const items=[["home","الرئيسية"],["members","الأعضاء"],["top","توب"],["roles","الرتب القيادية"],["chat","الشات"],["profile","بروفايلي"],["zajel","الزاجل"],["games","الألعاب"],["groups","القروبات"],["account","حسابي"],["tickets","التذاكر"],["applications","التقديم"],["reviews","الآراء"]];
+ const items=[["home","الرئيسية"],["members","الأعضاء"],["top","توب"],["roles","الرتب القيادية"],["chat","الشات"],["profile","بروفايلي"],["zajel","الزاجل"],["games","الألعاب"],["groups","القروبات"],["cinema","السينما"],["account","حسابي"],["tickets","التذاكر"],["applications","التقديم"],["reviews","الآراء"]];
  if(me)items.push(["logout","تسجيل خروج"]);
  if(me&&["admin","owner"].includes(me.role))items.push(["admin","الإدارة"]);
  if(me?.role==="owner")items.push(["owner","لوحة الأونر"]);
  const h=items.map(x=>'<button data-page="'+x[0]+'">'+x[1]+"</button>").join("");
  $("#desktop-nav").innerHTML=h;mobile.innerHTML=h;
 }
-function page(p){if(p==="logout")return logout();if(p==="profile"&&!me)return requireLogin(()=>page("profile"));nav();mobile.classList.remove("open");menu.setAttribute("aria-expanded","false");({home,members,top,roles,chat,profile,zajel,games,groups,account,tickets,applications,reviews,admin,owner}[p]||home)();history.replaceState(null,"","#"+p)}
+function page(p){if(p==="logout")return logout();if(p==="profile"&&!me)return requireLogin(()=>page("profile"));nav();mobile.classList.remove("open");menu.setAttribute("aria-expanded","false");({home,members,top,roles,chat,profile,zajel,games,groups,cinema,account,tickets,applications,reviews,admin,owner}[p]||home)();history.replaceState(null,"","#"+p)}
 menu.onclick=e=>{e.preventDefault();e.stopPropagation();const o=!mobile.classList.contains("open");mobile.classList.toggle("open",o);menu.setAttribute("aria-expanded",String(o))};
 document.addEventListener("click",async e=>{
  const p=e.target.closest("[data-page]"); if(p){e.preventDefault();return page(p.dataset.page)}
@@ -57,7 +57,7 @@ document.addEventListener("click",async e=>{
   if(a==="new-review")return reviewCreate();
   if(a==="submit-review"){await api("/api/reviews",{method:"POST",body:JSON.stringify({text:$("#review-text").value,rating:Number($("#review-rating").value)})});close();notify("تم نشر رأيك");return reviews()}
   if(a.startsWith("delete-review:")){await api("/api/reviews/"+a.split(":")[1],{method:"DELETE"});return reviews()}
-  if(a==="submit-application")return applicationSubmit();
+  if(a==="start-application")return startApplication(); if(a==="submit-application")return applicationSubmit();
   if(a.startsWith("application-status:")){const [_,id,status]=a.split(":");await api("/api/applications/"+id+"/status",{method:"PATCH",body:JSON.stringify({status})});return me?.role==="admin"?adminApplications():ownerApplications()}
   if(a.startsWith("private-open:"))return privateOpen(a.split(":")[1]);
   if(a==="private-new")return privateCreate();
@@ -112,6 +112,7 @@ async function tickets(){if(!me)return requireLogin(()=>tickets());let a=[];try{
 function ticketCreate(){open('<div class="form-grid"><h2>تذكرة جديدة</h2><input id="t-subject" class="full" placeholder="العنوان"><textarea id="t-message" class="full" rows="7" placeholder="اشرح طلبك..."></textarea>'+btn("فتح التذكرة","submit-ticket")+'</div>')}
 async function ticketView(id){const a=await api("/api/tickets"),t=a.find(x=>x.id===id);if(!t)return notify("التذكرة غير موجودة");open('<div class="form-grid"><p class="eyebrow">TICKET</p><h2>'+esc(t.subject)+'</h2><p>'+esc(t.message)+'</p><hr>'+(t.replies||[]).map(x=>'<div class="bubble"><b>'+esc(x.name)+'</b><p>'+esc(x.message)+'</p></div>').join("")+'<textarea id="ticket-reply" class="full" rows="5" placeholder="اكتب ردك..."></textarea>'+btn("إرسال الرد","reply-ticket:"+id)+(me&&["admin","owner"].includes(me.role)&&t.status==="open"?btn("إغلاق","close-ticket:"+id,"ghost"):"")+'</div>')}
 
+async function cinema(){app.innerHTML=shell("CINEMA","السينما","غرف مشاهدة جماعية للمحتوى المرخّص الذي تختارونه.",'<div class="panel"><div class="feature-grid"><article class="feature"><div class="ico">🎬</div><h3>غرفة مشاهدة</h3><p>اختر المحتوى المرخّص وشاهدوا معاً.</p><button class="primary" data-action="cinema-create">إنشاء غرفة</button></article><article class="feature"><div class="ico">🍿</div><h3>غرف المجتمع</h3><p>الغرف العامة ستظهر هنا عند توفرها.</p><span class="role">قريباً</span></article></div></div>')}
 async function applications(){if(!me)return requireLogin(()=>applications());app.innerHTML=shell("APPLICATIONS","التقديم للإدارة","أجب عن الأسئلة ثم أرسل طلبك إلى لوحة الأونر.",'<div class="feature"><p class="muted">التقديم متاح للأعضاء المسجلين.</p>'+btn("بدء التقديم","start-application")+"</div>")}
 async function startApplication(){requireLogin(async()=>{const d=await api("/api/applications/questions");open('<div class="form-grid"><h2>طلب إدارة</h2>'+d.questions.map((q,i)=>'<label>'+esc(q)+'</label><textarea class="app-q full" data-i="'+i+'" rows="4"></textarea>').join("")+btn("إرسال الطلب","submit-application")+'</div>')})}
 async function applicationSubmit(){const answers=[...document.querySelectorAll(".app-q")].sort((a,b)=>a.dataset.i-b.dataset.i).map(x=>x.value);await api("/api/applications",{method:"POST",body:JSON.stringify({answers})});close();notify("تم إرسال طلبك للمالك")}
