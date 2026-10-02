@@ -1,5 +1,6 @@
 "use strict";
 const $=s=>document.querySelector(s), $$=s=>[...document.querySelectorAll(s)];
+const app=$("#app");
 let token=localStorage.getItem("mld_token")||"",me=null;
 const games=[["🎡","Roulette","اختيار عشوائي"],["🕵️","Mafia","أدوار سرية"],["🗣️","Salfah","سوالف وتحديات"],["💣","Bomb","مرر القنبلة"],["🙈","Hide","اختباء"],["❌","X","جولات سريعة"],["🪑","Chairs","الكراسي"],["🔗","Wasel","واصل"],["🧩","Akmal","أكمل"],["⏱️","Tard","تحدي الوقت"],["💥","Trap","فخاخ"],["🔘","Button","سرعة"],["🪨","Stone","حظ"],["🟥","Code Names","فريقان وأدوار"],["🌍","Capitals","فردية"],["🏢","Company","فردية"],["🎯","Qosar","تحدي فردي"],["✂️","Cut","فردية"]];
 const base=[["home","⌂","الرئيسية"],["members","◉","الأعضاء"],["top","♛","التوب"],["roles","◆","الرتب القيادية"],["chat","✦","الشات"],["profile","◎","بروفايلي"],["zajel","➤","الزاجل"],["games","◈","الألعاب"],["groups","◇","القروبات"],["cinema","▣","السينما"],["account","◌","حسابي"],["tickets","▤","التذاكر"],["applications","✎","التقديم"],["reviews","♡","الآراء"]];
