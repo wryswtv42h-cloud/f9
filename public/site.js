@@ -1,6 +1,6 @@
 "use strict";
 const $=s=>document.querySelector(s), app=$("#app"), modal=$("#modal"), mc=$("#modal-content"), menu=$("#menu"), mobile=$("#mobile-menu");
-const FALLBACK="https://cdn.discordapp.com/attachments/1398447508463550578/1550544040401829888/IMG_0577.jpg?ex=6ab54faa&is=6ab3fe2a&hm=a259fd1df3cbee263e02c29b2d4e9cee75036f43cef9fe85ad23d79573c0c23f";
+const FALLBACK="/logo.svg.JPG";
 const esc=v=>String(v??"").replace(/[&<>"']/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c]));
 const num=v=>new Intl.NumberFormat("ar-SA").format(Number(v)||0);
 let token=localStorage.getItem("mld_token")||"",me=null,privateRooms=[],activePrivate=null;
