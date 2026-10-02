@@ -1,8 +1,8 @@
 "use strict";
 require("dotenv").config();
-const fs = require("fs");
-const crypto = require("crypto");
-const path=require("path"),fs=require("fs"),crypto=require("crypto");
+const path=require("path");
+const fs=require("fs");
+const crypto=require("crypto");
 const express=require("express"),cors=require("cors"),helmet=require("helmet");
 const bcrypt=require("bcryptjs");
 const {Client,GatewayIntentBits,EmbedBuilder,PermissionFlagsBits,ChannelType}=require("discord.js");
