@@ -74,7 +74,8 @@ document.addEventListener("click",async e=>{
   if(a==="owner-apps")return ownerApplications(); if(a==="owner-groups")return ownerGroups();
   if(a==="owner-subs")return ownerSubs();
   if(a==="owner-settings")return ownerSettings();
-  if(a==="cinema-create"){return open('<div class="form-grid"><p class="eyebrow">CINEMA ROOM</p><h2>إنشاء غرفة مشاهدة</h2><input id="cinema-title" class="full" placeholder="اسم الغرفة"><input id="cinema-content" class="full" placeholder="رابط المحتوى المرخّص"><p class="muted">واجهة الغرفة جاهزة للربط مع مزود المشاهدة.</p>'+btn("إغلاق","close","ghost")+'</div>')}\n  if(a==="save-settings"){await api("/api/owner/settings",{method:"PATCH",body:JSON.stringify({announcement:$("#ann").value,announcementColor:$("#annc").value})});close();notify("تم حفظ الإعلان")}
+  if(a==="cinema-create"){return open('<div class="form-grid"><p class="eyebrow">CINEMA ROOM</p><h2>إنشاء غرفة مشاهدة</h2><input id="cinema-title" class="full" placeholder="اسم الغرفة"><input id="cinema-content" class="full" placeholder="رابط المحتوى المرخّص"><p class="muted">واجهة الغرفة جاهزة للربط مع مزود المشاهدة.</p>'+btn("إغلاق","close","ghost")+'</div>')}
+  if(a==="save-settings"){await api("/api/owner/settings",{method:"PATCH",body:JSON.stringify({announcement:$("#ann").value,announcementColor:$("#annc").value})});close();notify("تم حفظ الإعلان")}
   if(a==="admin-tickets")return adminTickets(); if(a==="admin-applications")return adminApplications();
   if(a==="admin-dm")return adminDM();
   if(a==="send-admin-dm"){await api("/api/admin/dm",{method:"POST",body:JSON.stringify({discordUsername:$("#dm-user").value,message:$("#dm-text").value})});close();notify("تم إرسال الرسالة")}
