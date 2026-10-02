@@ -8,7 +8,29 @@
 <title>MLD · Community</title>
 <link rel="icon" href="/logo.svg.JPG">
 <link rel="stylesheet" href="/style.css?v=301">
-</head>
+<style id="mld-radical-ui">
+:root{--mld-scale:1.06}
+body{font-size:calc(16px * var(--mld-scale));background:radial-gradient(900px 500px at 80% -5%,rgba(255,156,220,.12),transparent 62%),radial-gradient(700px 500px at 5% 100%,rgba(155,124,255,.08),transparent 60%),var(--bg)}
+.topbar{height:86px;background:rgba(8,8,12,.72);box-shadow:0 16px 55px rgba(0,0,0,.22)}
+.topbar-inner{max-width:1760px;padding:0 36px}
+.brand-logo{width:52px;height:52px;border-radius:17px}
+.layout{max-width:1760px;grid-template-columns:305px minmax(0,1fr)}
+.sidebar{top:86px;height:calc(100vh - 86px);padding:32px 20px 22px}
+.desktop-nav{gap:6px}.desktop-nav button,.desktop-nav a{padding:14px 15px;font-size:13px;border-radius:15px}
+.content{padding:0 58px 90px}.page{max-width:1450px;padding-top:52px}
+.hero{min-height:720px;grid-template-columns:1.15fr .85fr;gap:75px;padding:78px 0 60px}
+.hero h1{font-size:clamp(68px,7.8vw,122px);letter-spacing:-9px}
+.hero-art{height:555px;border-radius:46px}.hero-art img{width:300px;height:300px;border-radius:65px}
+.server-strip{border-radius:26px;margin-bottom:52px}.server-strip>div{padding:28px}
+.panel,.owner-box,.profile-card,.ticket,.feature,.card,.review,.role-card,.top-section,.game-card,.chat-list,.chat-window{border-radius:26px}
+.panel{padding:34px}.feature{padding:28px;min-height:205px}.game-card{padding:24px;min-height:220px}
+.feature-grid,.game-grid{gap:15px}.grid,.review-grid,.roles-grid,.top-grid{gap:15px}
+.primary,.ghost{padding:12px 18px;border-radius:14px}
+.footer{max-width:1760px;padding:30px 36px 38px}
+@media(max-width:1200px){.layout{grid-template-columns:260px minmax(0,1fr)}.content{padding:0 34px 70px}.hero{gap:42px}.hero h1{font-size:clamp(60px,7vw,95px)}}
+@media(max-width:1000px){.topbar{height:74px}.layout{display:block}.content{padding:0 22px 65px}.hero{grid-template-columns:1fr;min-height:auto;padding:52px 0 38px}.hero-art{height:390px}.mobile-menu{top:74px}.feature-grid,.game-grid{grid-template-columns:repeat(2,1fr)}}
+@media(max-width:620px){body{font-size:16px}.topbar-inner{padding:0 13px}.brand-logo{width:43px;height:43px}.content{padding:0 12px 50px}.page{padding-top:28px}.hero{padding-top:36px}.hero h1{font-size:51px;letter-spacing:-5px}.hero-art{height:300px}.hero-art img{width:195px;height:195px}.panel{padding:20px}.feature{padding:21px;min-height:165px}.game-card{min-height:185px}.server-strip>div{padding:18px}}
+</style></head>
 <body>
 <div class="noise"></div><div class="orb orb-a"></div><div class="orb orb-b"></div>
 <div id="announcement" class="announcement"></div>
