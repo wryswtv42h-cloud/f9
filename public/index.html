@@ -3,29 +3,54 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
-<meta name="theme-color" content="#09070d">
+<meta name="theme-color" content="#08080c">
+<meta name="description" content="MLD Community — مجتمع ملاذ">
 <title>MLD · Community</title>
-<link rel="icon" href="https://cdn.discordapp.com/attachments/1398447508463550578/1550544040401829888/IMG_0577.jpg?ex=6ab54faa&is=6ab3fe2a&hm=a259fd1df3cbee263e02c29b2d4e9cee75036f43cef9fe85ad23d79573c0c23f">
-<link rel="stylesheet" href="/style.css?v=100">
+<link rel="icon" href="/logo.svg.JPG">
+<link rel="stylesheet" href="/style.css?v=300">
 </head>
 <body>
-<div class="ambient a1"></div><div class="ambient a2"></div>
+<div class="noise"></div>
+<div class="orb orb-a"></div><div class="orb orb-b"></div>
 <div id="announcement" class="announcement"></div>
+
 <header class="topbar">
-  <div class="nav wrap">
-    <button id="menu" class="hamb" aria-label="القائمة" aria-expanded="false">☰</button>
-    <a class="brand" href="#home"><span class="brand-mark"><img src="https://cdn.discordapp.com/attachments/1398447508463550578/1550544040401829888/IMG_0577.jpg?ex=6ab54faa&is=6ab3fe2a&hm=a259fd1df3cbee263e02c29b2d4e9cee75036f43cef9fe85ad23d79573c0c23f"></span><span><b>MLD</b><small>COMMUNITY</small></span></a>
-    <nav id="desktop-nav" class="desktop-nav"></nav>
+  <div class="topbar-inner">
+    <button id="menu" class="hamb" aria-label="فتح القائمة" aria-expanded="false"><span></span><span></span><span></span></button>
+    <a class="brand" href="#home" data-page="home">
+      <span class="brand-logo"><img src="/logo.svg.JPG" alt="MLD"></span>
+      <span class="brand-copy"><b>MLD</b><small>COMMUNITY</small></span>
+    </a>
+    <div class="top-status"><i></i><span>MLD ONLINE</span></div>
+    <div class="top-actions">
+      <button class="top-icon" data-page="reviews" title="الآراء">✦</button>
+      <button class="top-icon" data-page="account" title="حسابي">◉</button>
+    </div>
   </div>
-  <div id="mobile-menu" class="mobile-menu wrap"></div>
 </header>
-<main id="app" class="wrap"></main>
-<footer class="footer wrap">
-  <div><b>MLD · Community</b><span>مجتمعك، بأسلوبك.</span></div>
+
+<div class="layout">
+  <aside class="sidebar">
+    <div class="side-head"><span>مساحات MLD</span><small>MAIN MENU</small></div>
+    <nav id="desktop-nav" class="desktop-nav"></nav>
+    <div class="side-foot">
+      <div class="side-badge">MLD <span>•</span> COMMUNITY</div>
+      <small>مجتمعك، بأسلوبك.</small>
+    </div>
+  </aside>
+  <div id="mobile-menu" class="mobile-menu"></div>
+
+  <main id="app" class="content"></main>
+</div>
+
+<footer class="footer">
+  <div><b>MLD · Community</b><span>مجتمع ملاذ الرقمي</span></div>
   <div class="social"><a href="https://www.tiktok.com/@jj51" target="_blank" rel="noopener">TikTok · jj51</a><a href="https://www.instagram.com/li5uxi" target="_blank" rel="noopener">Instagram · li5uxi</a></div>
   <small>© <span id="year"></span> MLD</small>
 </footer>
+
 <div id="toast" class="toast"></div>
 <div id="modal" class="modal hidden"><div class="modal-card"><button id="close" class="close">×</button><div id="modal-content"></div></div></div>
-<script src="/site.js?v=100"></script>
-</body></html>
+<script src="/site.js?v=300"></script>
+</body>
+</html>
