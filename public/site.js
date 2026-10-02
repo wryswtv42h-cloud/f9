@@ -9,7 +9,17 @@ var items=[["home","⌂","الرئيسية"],["members","◉","الأعضاء"],
 function nav(){var a=items.slice();if(me)a.push(["logout","↪","تسجيل خروج"]);if(me&&["admin","owner"].includes(me.role))a.push(["admin","⚙","الإدارة"]);if(me&&me.role==="owner")a.push(["owner","♛","لوحة الأونر"]);var h=a.map(function(x){return '<button data-page="'+x[0]+'"><span>'+x[1]+"</span>"+x[2]+"</button>"}).join("");$("#desktop-nav").innerHTML=h;$("#menu-list").innerHTML=h;mobile.innerHTML=h}
 async function server(){try{var d=await api("/api/public/server");$("#side-server").textContent=d.name||"MLD Community";$("#side-status").textContent=d.memberCount?num(d.memberCount)+" عضو":"متصل الآن";return d}catch(e){return {}}}
 function go(p){history.replaceState(null,"","#"+p);page(p)}
-async function boot(){try{var d=await api("/api/auth/me");me=d.user||null}catch(e){me=null}nav();$("#year").textContent=new Date().getFullYear();await server();page(location.hash.slice(1)||"home");setTimeout(function(){$("#intro").classList.add("hide")},900)}
+async function boot(){
+  /* لا تجعل شاشة الترحيب تعتمد على Discord/API؛ الموقع يجب أن يفتح حتى لو تأخر السيرفر. */
+  nav();
+  $("#year").textContent=new Date().getFullYear();
+  setTimeout(function(){var intro=$("#intro");if(intro)intro.classList.add("hide")},900);
+  try{var d=await Promise.race([api("/api/auth/me"),new Promise(function(_,rej){setTimeout(function(){rej(Error("auth timeout"))},4000)})]);me=d.user||null}catch(e){me=null}
+  nav();
+  page(location.hash.slice(1)||"home");
+  server().catch(function(){});
+}
+window.addEventListener("DOMContentLoaded",boot);
 function page(p){p=(p||"home").replace("#","");nav();mobile.classList.remove("open");document.querySelectorAll("[data-page]").forEach(function(x){x.classList.toggle("active",x.dataset.page===p)});var f={home:home,members:members,top:top,roles:roles,chat:chat,profile:profile,zajel:zajel,games:games,groups:groups,cinema:cinema,account:account,tickets:tickets,applications:applications,reviews:reviews,admin:admin,owner:owner}[p];if(p==="logout")return logout();return(f||home)()}
 function shell(e,t,s,b){return '<div class="page"><div class="section"><div class="section-head"><div><p class="eyebrow">'+e+"</p><h2>"+t+'</h2><p class="muted">'+s+"</p></div></div>"+b+"</div></div>"}
 function action(text,name,cls){return '<button class="btn '+(cls||"")+'" data-action="'+name+'">'+text+"</button>"}
