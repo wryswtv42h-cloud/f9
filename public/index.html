@@ -1,53 +1,23 @@
 <!doctype html>
 <html lang="ar" dir="rtl">
 <head>
-<meta charset="UTF-8">
-<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
-<meta name="theme-color" content="#08080c">
-<meta name="description" content="MLD Community — مجتمع ملاذ">
-<title>MLD · Community</title>
-<link rel="icon" href="/logo.svg.JPG">
-<link rel="stylesheet" href="/style.css?v=301">
-<style id="mld-radical-ui">
-:root{--mld-scale:1.06}
-body{font-size:calc(16px * var(--mld-scale));background:radial-gradient(900px 500px at 80% -5%,rgba(255,156,220,.12),transparent 62%),radial-gradient(700px 500px at 5% 100%,rgba(155,124,255,.08),transparent 60%),var(--bg)}
-.topbar{height:86px;background:rgba(8,8,12,.72);box-shadow:0 16px 55px rgba(0,0,0,.22)}
-.topbar-inner{max-width:1760px;padding:0 36px}
-.brand-logo{width:52px;height:52px;border-radius:17px}
-.layout{max-width:1760px;grid-template-columns:305px minmax(0,1fr)}
-.sidebar{top:86px;height:calc(100vh - 86px);padding:32px 20px 22px}
-.desktop-nav{gap:6px}.desktop-nav button,.desktop-nav a{padding:14px 15px;font-size:13px;border-radius:15px}
-.content{padding:0 58px 90px}.page{max-width:1450px;padding-top:52px}
-.hero{min-height:720px;grid-template-columns:1.15fr .85fr;gap:75px;padding:78px 0 60px}
-.hero h1{font-size:clamp(68px,7.8vw,122px);letter-spacing:-9px}
-.hero-art{height:555px;border-radius:46px}.hero-art img{width:300px;height:300px;border-radius:65px}
-.server-strip{border-radius:26px;margin-bottom:52px}.server-strip>div{padding:28px}
-.panel,.owner-box,.profile-card,.ticket,.feature,.card,.review,.role-card,.top-section,.game-card,.chat-list,.chat-window{border-radius:26px}
-.panel{padding:34px}.feature{padding:28px;min-height:205px}.game-card{padding:24px;min-height:220px}
-.feature-grid,.game-grid{gap:15px}.grid,.review-grid,.roles-grid,.top-grid{gap:15px}
-.primary,.ghost{padding:12px 18px;border-radius:14px}
-.footer{max-width:1760px;padding:30px 36px 38px}
-@media(max-width:1200px){.layout{grid-template-columns:260px minmax(0,1fr)}.content{padding:0 34px 70px}.hero{gap:42px}.hero h1{font-size:clamp(60px,7vw,95px)}}
-@media(max-width:1000px){.topbar{height:74px}.layout{display:block}.content{padding:0 22px 65px}.hero{grid-template-columns:1fr;min-height:auto;padding:52px 0 38px}.hero-art{height:390px}.mobile-menu{top:74px}.feature-grid,.game-grid{grid-template-columns:repeat(2,1fr)}}
-@media(max-width:620px){body{font-size:16px}.topbar-inner{padding:0 13px}.brand-logo{width:43px;height:43px}.content{padding:0 12px 50px}.page{padding-top:28px}.hero{padding-top:36px}.hero h1{font-size:51px;letter-spacing:-5px}.hero-art{height:300px}.hero-art img{width:195px;height:195px}.panel{padding:20px}.feature{padding:21px;min-height:165px}.game-card{min-height:185px}.server-strip>div{padding:18px}}
-</style></head>
+<meta charset="UTF-8"><meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<meta name="theme-color" content="#09070f"><title>MLD · Community</title>
+<link rel="icon" href="/logo.svg.JPG"><link rel="stylesheet" href="/style.css?v=500">
+</head>
 <body>
-<div class="noise"></div><div class="orb orb-a"></div><div class="orb orb-b"></div>
-<div id="announcement" class="announcement"></div>
+<div class="ambient a1"></div><div class="ambient a2"></div><div class="ambient a3"></div>
+<div id="intro" class="intro"><img src="/logo.svg.JPG"><b>أهلاً بكم في ملاذ</b><span>MLD · COMMUNITY</span></div>
 <header class="topbar"><div class="topbar-inner">
-<button id="menu" class="hamb" aria-label="فتح القائمة" aria-expanded="false"><span></span><span></span><span></span></button>
-<a class="brand" href="#home" data-page="home"><span class="brand-logo"><img src="/logo.svg.JPG" alt="MLD"></span><span class="brand-copy"><b>MLD</b><small>COMMUNITY</small></span></a>
-<div class="top-status"><i></i><span>MLD ONLINE</span></div>
-<div class="top-actions"><button class="top-icon" data-page="reviews" title="الآراء">✦</button><button class="top-icon" data-page="account" title="حسابي">◉</button></div>
-</div></header>
-<div class="layout">
-<aside class="sidebar"><div class="side-head"><span>مساحات MLD</span><small>MAIN MENU</small></div>
-<nav id="desktop-nav" class="desktop-nav">
-<a href="#home" data-page="home">الرئيسية</a><a href="#members" data-page="members">الأعضاء</a><a href="#top" data-page="top">توب</a><a href="#roles" data-page="roles">الرتب القيادية</a><a href="#chat" data-page="chat">الشات</a><a href="#profile" data-page="profile">بروفايلي</a><a href="#zajel" data-page="zajel">الزاجل</a><a href="#games" data-page="games">الألعاب</a><a href="#groups" data-page="groups">القروبات</a><a href="#cinema" data-page="cinema">السينما</a><a href="#account" data-page="account">حسابي</a><a href="#tickets" data-page="tickets">التذاكر</a><a href="#applications" data-page="applications">التقديم</a><a href="#reviews" data-page="reviews">الآراء</a>
-</nav><div class="side-foot"><div class="side-badge">MLD <span>•</span> COMMUNITY</div><small>مجتمعك، بأسلوبك.</small></div></aside>
-<div id="mobile-menu" class="mobile-menu" aria-label="قائمة الجوال"></div>
-<main id="app" class="content"></main></div>
-<footer class="footer"><div><b>MLD · Community</b><span>مجتمع ملاذ الرقمي</span></div><div class="social"><a href="https://www.tiktok.com/@jj51" target="_blank" rel="noopener">TikTok · jj51</a><a href="https://www.instagram.com/li5uxi" target="_blank" rel="noopener">Instagram · li5uxi</a></div><small>© <span id="year"></span> MLD</small></footer>
-<div id="toast" class="toast"></div><div id="modal" class="modal hidden"><div class="modal-card"><button id="close" class="close">×</button><div id="modal-content"></div></div></div>
-<script src="/site.js?v=301"></script>
+<button id="menu" class="icon-btn" aria-label="القائمة">☰</button>
+<a class="brand" href="#home"><img src="/logo.svg.JPG"><span><b>MLD</b><small>COMMUNITY</small></span></a>
+<nav id="desktop-nav"></nav>
+<div class="top-actions"><button id="sound" class="icon-btn" title="الصوت">◉</button><button id="account-mini" class="account-mini" data-page="account">حسابي</button></div>
+</div><div id="mobile-menu" class="mobile-menu"></div></header>
+<div class="announcement"><div id="announcement-text">مرحباً بك في مجتمع MLD — استكشف المنصة وشارك معنا.</div></div>
+<main class="layout"><aside id="sidebar" class="sidebar"><div class="side-title">MLD · MENU</div><nav id="menu-list"></nav><div class="side-bottom"><div class="server-mini"><img src="/logo.svg.JPG"><div><b id="side-server">MLD Community</b><small id="side-status">متصل الآن</small></div></div><a class="support" href="https://discord.com/users/w4px" target="_blank">دعم ملاذ ↗</a></div></aside>
+<section id="app" class="app"></section></main>
+<footer><div><b>MLD · COMMUNITY</b><span>مجتمع ملاذ الرقمي</span></div><div class="socials"><a href="https://www.tiktok.com/@jj51" target="_blank">TikTok</a><a href="https://www.instagram.com/li5uxi" target="_blank">Instagram</a></div><small>© <span id="year"></span> MLD · جميع الحقوق محفوظة</small></footer>
+<div id="toast" class="toast"></div><div id="modal" class="modal hidden"><div id="modal-card" class="modal-card"><button id="modal-close" class="close">×</button><div id="modal-content"></div></div></div>
+<script src="/site.js?v=500"></script>
 </body></html>
