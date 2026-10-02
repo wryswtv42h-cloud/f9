@@ -8,14 +8,14 @@
 <body>
 <div class="ambient a1"></div><div class="ambient a2"></div><div class="ambient a3"></div>
 <header class="topbar"><div class="topbar-inner">
-<button id="menu" class="icon-btn" aria-label="القائمة">☰</button>
+<button id="menu" class="icon-btn" aria-label="القائمة" type="button" onclick="document.getElementById('mobile-menu').classList.toggle('open')">☰</button>
 <a class="brand" href="#home"><img src="/logo.svg.JPG"><span><b>MLD</b><small>COMMUNITY</small></span></a>
-<nav id="desktop-nav"></nav>
+<nav id="desktop-nav"><button data-page="home">⌂ الرئيسية</button><button data-page="members">◉ الأعضاء</button><button data-page="top">♛ التوب</button><button data-page="games">◈ الألعاب</button></nav>
 <div class="top-actions"><button id="sound" class="icon-btn" title="الصوت">◉</button><button id="account-mini" class="account-mini" data-page="account">حسابي</button></div>
-</div><div id="mobile-menu" class="mobile-menu"></div></header>
+</div><div id="mobile-menu" class="mobile-menu"><button onclick="location.hash='home';location.reload()">⌂ الرئيسية</button><button onclick="location.hash='members';location.reload()">◉ الأعضاء</button><button onclick="location.hash='top';location.reload()">♛ التوب</button><button onclick="location.hash='games';location.reload()">◈ الألعاب</button><button onclick="location.hash='groups';location.reload()">◇ القروبات</button><button onclick="location.hash='chat';location.reload()">✦ الشات</button><button onclick="location.hash='account';location.reload()">◌ حسابي</button></div></header>
 <div class="announcement"><div id="announcement-text">مرحباً بك في مجتمع MLD — استكشف المنصة وشارك معنا.</div></div>
 <main class="layout"><aside id="sidebar" class="sidebar"><div class="side-title">MLD · MENU</div><nav id="menu-list"></nav><div class="side-bottom"><div class="server-mini"><img src="/logo.svg.JPG"><div><b id="side-server">MLD Community</b><small id="side-status">متصل الآن</small></div></div><a class="support" href="https://discord.com/users/w4px" target="_blank">دعم ملاذ ↗</a></div></aside>
-<section id="app" class="app"></section></main>
+<section id="app" class="app"><div class="page"><section class="hero"><div><p class="eyebrow">MLD · LIVE COMMUNITY</p><h1>مجتمع <span>ملاذ</span><br>بشكل مختلف.</h1><p>منصة MLD تجمع مجتمع Discord مع الحسابات، الشات، الألعاب، القروبات، التذاكر والفعاليات في تجربة واحدة.</p><div class="hero-actions"><button class="btn primary" onclick="location.hash='members';location.reload()">استكشف المنصة</button><button class="btn ghost" onclick="location.hash='account';location.reload()">حسابي</button></div></div><div class="hero-visual"><div class="orbit"></div><div class="frame"><img src="/logo.svg.JPG" alt="MLD"></div></div></section></div></section></main>
 <footer><div><b>MLD · COMMUNITY</b><span>مجتمع ملاذ الرقمي</span></div><div class="socials"><a href="https://www.tiktok.com/@jj51" target="_blank">TikTok</a><a href="https://www.instagram.com/li5uxi" target="_blank">Instagram</a></div><small>© <span id="year"></span> MLD · جميع الحقوق محفوظة</small></footer>
 <div id="toast" class="toast"></div><div id="modal" class="modal hidden"><div id="modal-card" class="modal-card"><button id="modal-close" class="close">×</button><div id="modal-content"></div></div></div>
 <script src="/site.js?v=500"></script>
