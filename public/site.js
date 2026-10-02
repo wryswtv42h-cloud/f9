@@ -19,7 +19,6 @@ async function boot(){
   page(location.hash.slice(1)||"home");
   server().catch(function(){});
 }
-window.addEventListener("DOMContentLoaded",boot);
 function page(p){p=(p||"home").replace("#","");nav();mobile.classList.remove("open");document.querySelectorAll("[data-page]").forEach(function(x){x.classList.toggle("active",x.dataset.page===p)});var f={home:home,members:members,top:top,roles:roles,chat:chat,profile:profile,zajel:zajel,games:games,groups:groups,cinema:cinema,account:account,tickets:tickets,applications:applications,reviews:reviews,admin:admin,owner:owner}[p];if(p==="logout")return logout();return(f||home)()}
 function shell(e,t,s,b){return '<div class="page"><div class="section"><div class="section-head"><div><p class="eyebrow">'+e+"</p><h2>"+t+'</h2><p class="muted">'+s+"</p></div></div>"+b+"</div></div>"}
 function action(text,name,cls){return '<button class="btn '+(cls||"")+'" data-action="'+name+'">'+text+"</button>"}
