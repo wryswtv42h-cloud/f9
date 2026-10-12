@@ -4,12 +4,13 @@ const fs=require("fs"),path=require("path"),crypto=require("crypto");
 const express=require("express"),cors=require("cors"),helmet=require("helmet"),bcrypt=require("bcryptjs");
 const {Client,GatewayIntentBits,ChannelType,PermissionFlagsBits}=require("discord.js");
 const app=express(); app.use(helmet({contentSecurityPolicy:false})); app.use(cors()); app.use(express.json({limit:"1mb"}));
-const PORT=Number(process.env.PORT||3000), DATA=path.join(__dirname,"data.json");
+const PORT=Number(process.env.PORT||3000), DATA_DIR=process.env.DATA_DIR||"/data", DATA=path.join(DATA_DIR,"data.json"), LEGACY_DATA=path.join(__dirname,"data.json");
 const IDS={owner:process.env.OWNER_ROLE_ID||"1530712642384040027",coowner:process.env.COOWNER_ROLE_ID||"1521187079336362024",founder:process.env.FOUNDER_ROLE_ID||"1531109479264026706",senior:process.env.SENIOR_STAFF_ROLE_ID||"1548732297669255259",staff:process.env.STAFF_ROLE_ID||"1548732341185155103",junior:process.env.JUNIOR_STAFF_ROLE_ID||"1548732606508703744"};
 const base={users:[],sessions:[],reviews:[],chat:[],privateChats:[],tickets:[],applications:[],groups:[],zajel:[],games:[],logs:[],subscriptions:[],settings:{announcement:"مرحباً بكم في MLD · Community",announcementColor:"#ff9cde"}};
 let store=base;
-try{if(fs.existsSync(DATA))store=Object.assign(base,JSON.parse(fs.readFileSync(DATA,"utf8")))}catch{}
-function save(){fs.writeFileSync(DATA,JSON.stringify(store,null,2))}
+try{const source=fs.existsSync(DATA)?DATA:LEGACY_DATA;if(fs.existsSync(source))store=Object.assign(base,JSON.parse(fs.readFileSync(source,"utf8")))}catch(error){console.error("Could not load saved MLD data:",error.message)}
+try{fs.mkdirSync(DATA_DIR,{recursive:true});if(!fs.existsSync(DATA))fs.writeFileSync(DATA,JSON.stringify(store,null,2))}catch(error){console.error("Could not initialize persistent MLD storage:",error.message)}
+function save(){try{fs.mkdirSync(DATA_DIR,{recursive:true});fs.writeFileSync(DATA,JSON.stringify(store,null,2))}catch(error){console.error("Could not save MLD data:",error.message);throw error}}
 function id(){return crypto.randomUUID()}
 function log(type,data){store.logs.unshift({id:id(),type,data,at:new Date().toISOString()});store.logs=store.logs.slice(0,3000);save()}
 function cleanUser(u){if(!u)return null;return {id:u.id,username:u.username,displayName:u.displayName,avatar:u.avatar||"",bio:u.bio||"",role:u.role||"member",discordId:u.discordId||""}}
