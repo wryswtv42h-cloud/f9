@@ -99,6 +99,8 @@ app.get("/api/owner/settings",auth,owner,(q,s)=>s.json(store.settings));
 app.patch("/api/owner/settings",auth,owner,(q,s)=>{store.settings.announcement=String(q.body.announcement||"");store.settings.announcementColor=String(q.body.announcementColor||"#ff9cde");save();s.json(store.settings)});
 app.patch("/api/owner/questions",auth,owner,(q,s)=>{store.settings.questions=Array.isArray(q.body.questions)?q.body.questions:[];save();s.json({questions:store.settings.questions})});
 app.get("/api/admin/groups",auth,owner,(q,s)=>s.json({groups:store.groups}));
+const rateBuckets=new Map();
+app.use((req,res,next)=>{if(!["/api/auth/login","/api/auth/register","/api/auth/verify","/api/ai/chat"].includes(req.path))return next();const now=Date.now(),key=(req.ip||"unknown")+":"+req.path;const max=req.path==="/api/ai/chat"?12:10,windowMs=60000;let b=rateBuckets.get(key);if(!b||now-b.start>windowMs)b={start:now,count:0};b.count++;rateBuckets.set(key,b);res.set("RateLimit-Limit",String(max));res.set("RateLimit-Remaining",String(Math.max(0,max-b.count)));if(b.count>max)return res.status(429).json({error:"طلبات كثيرة خلال دقيقة واحدة. حاول بعد قليل."});next()});
 app.use(express.static(path.join(__dirname,"public")));
 app.get("*",(q,s)=>s.sendFile(path.join(__dirname,"public","index.html")));
 app.listen(PORT,()=>console.log("MLD Community listening on",PORT));
