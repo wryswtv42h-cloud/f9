@@ -27,7 +27,7 @@ async function dmDiscord(member,text){try{if(member)await member.send(text);retu
 const client=new Client({intents:[GatewayIntentBits.Guilds,GatewayIntentBits.GuildMembers,GatewayIntentBits.GuildMessages,GatewayIntentBits.MessageContent,GatewayIntentBits.GuildPresences]});
 let guild=null;
 const discordSuggestCache=new Map();
-const discordSuggestCache=new Map();
+
 client.once("ready",async()=>{guild=client.guilds.cache.get(process.env.DISCORD_GUILD_ID)||client.guilds.cache.first();console.log("MLD bot ready:",client.user.tag)})
 const discordToken=process.env.DISCORD_BOT_TOKEN||process.env.DISCORD_TOKEN;if(discordToken)client.login(discordToken).catch(e=>console.error("Discord login failed:",e.message));else console.error("Discord is disconnected: configure DISCORD_BOT_TOKEN or DISCORD_TOKEN in Railway.");
 async function notifyDiscord(title,description,color=0xff9cde,fields=[]){const channelId=process.env.DISCORD_NOTIFICATION_CHANNEL_ID;if(!channelId){console.warn("Discord notifications disabled: set DISCORD_NOTIFICATION_CHANNEL_ID in Railway.");return false}try{if(!client.isReady())return false;const channel=await client.channels.fetch(channelId);if(!channel||!channel.isTextBased()||typeof channel.send!=="function")throw new Error("Notification channel is unavailable or not text-based");await channel.send({embeds:[{title:String(title).slice(0,256),description:String(description).slice(0,4000),color,timestamp:new Date().toISOString(),footer:{text:"MLD · Community"},fields:fields.slice(0,25).map(x=>({name:String(x.name).slice(0,256),value:String(x.value||"—").slice(0,1024),inline:!!x.inline}))}]});return true}catch(e){console.error("Discord notification failed:",e.message);return false}}
@@ -99,8 +99,6 @@ app.get("/api/owner/settings",auth,owner,(q,s)=>s.json(store.settings));
 app.patch("/api/owner/settings",auth,owner,(q,s)=>{store.settings.announcement=String(q.body.announcement||"");store.settings.announcementColor=String(q.body.announcementColor||"#ff9cde");save();s.json(store.settings)});
 app.patch("/api/owner/questions",auth,owner,(q,s)=>{store.settings.questions=Array.isArray(q.body.questions)?q.body.questions:[];save();s.json({questions:store.settings.questions})});
 app.get("/api/admin/groups",auth,owner,(q,s)=>s.json({groups:store.groups}));
-const rateBuckets=new Map();
-app.use((req,res,next)=>{if(!["/api/auth/login","/api/auth/register","/api/auth/verify","/api/ai/chat"].includes(req.path))return next();const now=Date.now(),key=(req.ip||"unknown")+":"+req.path;const max=req.path==="/api/ai/chat"?12:10,windowMs=60000;let b=rateBuckets.get(key);if(!b||now-b.start>windowMs)b={start:now,count:0};b.count++;rateBuckets.set(key,b);res.set("RateLimit-Limit",String(max));res.set("RateLimit-Remaining",String(Math.max(0,max-b.count)));if(b.count>max)return res.status(429).json({error:"طلبات كثيرة خلال دقيقة واحدة. حاول بعد قليل."});next()});
 app.use(express.static(path.join(__dirname,"public")));
 app.get("*",(q,s)=>s.sendFile(path.join(__dirname,"public","index.html")));
 app.listen(PORT,()=>console.log("MLD Community listening on",PORT));
