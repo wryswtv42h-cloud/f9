@@ -25,7 +25,7 @@ async function dmDiscord(member,text){try{if(member)await member.send(text);retu
 const client=new Client({intents:[GatewayIntentBits.Guilds,GatewayIntentBits.GuildMembers,GatewayIntentBits.GuildMessages,GatewayIntentBits.MessageContent,GatewayIntentBits.GuildPresences]});
 let guild=null;
 client.once("ready",async()=>{guild=client.guilds.cache.get(process.env.DISCORD_GUILD_ID)||client.guilds.cache.first();console.log("MLD bot ready:",client.user.tag)})
-if(process.env.DISCORD_BOT_TOKEN)client.login(process.env.DISCORD_BOT_TOKEN).catch(e=>console.error("Discord login failed",e.message));
+const discordToken=process.env.DISCORD_BOT_TOKEN||process.env.DISCORD_TOKEN;if(discordToken)client.login(discordToken).catch(e=>console.error("Discord login failed:",e.message));else console.error("Discord is disconnected: configure DISCORD_BOT_TOKEN or DISCORD_TOKEN in Railway.");
 app.get("/health",(q,s)=>s.json({ok:true,time:new Date().toISOString(),discord:!!guild}));
 app.get("/api/public/server",async(q,s)=>{try{if(guild)await guild.members.fetch();s.json({name:guild?.name||"MLD Community",memberCount:guild?.memberCount||0,online:guild?[...guild.members.cache.values()].filter(m=>m.presence?.status&&m.presence.status!=="offline").length:0,visits:store.logs.filter(x=>x.type==="visit").length,ownerName:process.env.OWNER_DISPLAY_NAME||"فهد المطيري"})}catch{ s.json({name:"MLD Community",memberCount:0,online:0,visits:0,ownerName:"فهد المطيري"})}});
 app.use((q,s,n)=>{if(q.path.startsWith("/api/")){if(q.method==="GET"&&q.path==="/api/public/server")return n();}if(q.method==="GET"&&!q.path.startsWith("/api"))log("visit",{path:q.path});n()});
