@@ -123,3 +123,143 @@ body{background-image:radial-gradient(ellipse at 80% -10%,rgba(163,108,255,.22),
 .cinema-grid audio{width:100%;margin:14px 0}
 
 .cinema-frame video{position:absolute;inset:0;width:100%;height:100%;object-fit:contain;background:#000}.cinema-grid audio{width:100%;margin:14px 0}
+
+
+
+/* ── MLD Formal Edition · 2026-10-14 ────────────────────────────── */
+:root{
+ --bg:#0a0910;--panel:#11101a;--panel2:#171522;--card:#191725;
+ --line:rgba(226,190,218,.17);--text:#f8f5fa;--muted:#b7afc0;
+ --pink:#d7a5c8;--pink2:#b978a7;--purple:#a997d8;
+ --green:#8bd7b0;--danger:#e88c9c;--shadow:0 24px 70px rgba(0,0,0,.32);
+ --glass-line:rgba(226,190,218,.14);
+}
+html{scroll-padding-top:92px}
+body{
+ background:radial-gradient(ellipse at 80% -15%,rgba(135,96,144,.16),transparent 42%),
+ radial-gradient(ellipse at -10% 55%,rgba(91,74,124,.10),transparent 38%),var(--bg);
+ color:var(--text);font-family:"Tajawal","Segoe UI",Tahoma,Arial,sans-serif;
+ letter-spacing:0;line-height:1.65
+}
+.bg{opacity:.08;filter:blur(110px)}
+.bg1{background:#c98db9}.bg2{background:#8474b4}
+.top{
+ min-height:76px;height:auto;padding:12px clamp(14px,3vw,38px);gap:16px;
+ background:rgba(10,9,16,.92);border-bottom:1px solid var(--line);
+ box-shadow:0 8px 28px rgba(0,0,0,.14);backdrop-filter:blur(20px)
+}
+.brand{gap:12px;min-width:142px}
+.brand img{width:43px;height:43px;border-radius:13px;box-shadow:0 0 0 1px rgba(215,165,200,.24)}
+.brand b{font-size:19px;letter-spacing:1.5px;font-weight:800}
+.brand small{font-size:9px;letter-spacing:2.7px;color:#c4a9bf}
+.icon{border:1px solid var(--line);background:#ffffff04;color:var(--text);border-radius:12px;transition:background .2s,border-color .2s,transform .2s}
+.icon:hover{background:rgba(215,165,200,.1);border-color:rgba(215,165,200,.4);transform:translateY(-1px)}
+.top nav{gap:3px}
+.top nav button,.account-mini{color:#c1b8c8;padding:10px 13px;border-radius:10px;font-weight:600;transition:all .2s}
+.top nav button:hover,.top nav button.active,.account-mini:hover{color:#fff;background:rgba(215,165,200,.09)}
+.account-mini{border:1px solid var(--line);background:rgba(255,255,255,.025)}
+.announce{padding:9px 16px;background:#15111b;border-bottom:1px solid rgba(215,165,200,.12);color:#d9c9d7;text-align:center;font-size:12px;letter-spacing:.1px}
+main{width:min(1600px,100%);margin:0 auto;gap:24px;padding:24px clamp(12px,2.3vw,34px) 44px;align-items:start}
+.sidebar{
+ top:96px;max-height:calc(100vh - 120px);overflow:auto;
+ background:linear-gradient(165deg,rgba(24,21,34,.96),rgba(14,13,21,.96));
+ border:1px solid var(--line);border-radius:20px;padding:16px 12px;
+ box-shadow:0 18px 50px rgba(0,0,0,.17)
+}
+.side-brand{padding:8px 12px 15px;color:#bda5bb;font-size:10px;letter-spacing:2.3px;font-weight:800}
+.sidebar nav{gap:5px}
+.sidebar nav button,.sidebar nav a{
+ border:1px solid transparent;border-radius:12px;padding:11px 13px;color:#c0b8c7;
+ background:transparent;font-weight:600;transition:all .18s
+}
+.sidebar nav button:hover,.sidebar nav a:hover{background:rgba(215,165,200,.065);color:#fff;border-color:rgba(215,165,200,.12);transform:translateX(-2px)}
+.sidebar nav button.active,.sidebar nav a.active{color:#f7e6f1;background:linear-gradient(90deg,rgba(215,165,200,.12),rgba(169,151,216,.07));border-color:rgba(215,165,200,.2);box-shadow:inset -2px 0 #d7a5c8}
+.side-foot{border-top:1px solid var(--line);margin-top:16px;padding:14px 10px 6px;color:var(--muted);font-size:12px}
+.side-foot a{color:#d7a5c8;text-decoration:none}
+#app{min-width:0;width:100%;animation:formalIn .35s ease both}
+@keyframes formalIn{from{opacity:.4;transform:translateY(5px)}to{opacity:1;transform:translateY(0)}}
+#app h1,#app h2,#app h3{line-height:1.35;letter-spacing:-.35px}
+#app h1{font-size:clamp(27px,3.2vw,43px);font-weight:850}
+#app h2{font-size:clamp(20px,2.1vw,27px);font-weight:800}
+#app h3{font-size:17px;font-weight:750}
+#app p{line-height:1.85}
+#app .hero,#app .hero-card,#app .welcome,#app .home-hero{
+ border:1px solid rgba(215,165,200,.18);
+ background:linear-gradient(125deg,rgba(34,26,41,.96),rgba(20,18,29,.94) 60%,rgba(32,25,39,.92));
+ border-radius:24px;box-shadow:var(--shadow);overflow:hidden
+}
+#app .hero:before,#app .hero-card:before,#app .home-hero:before{opacity:.18}
+#app .card,#app .panel,#app .stat,#app .stat-card,#app .member-card,
+#app .game-card,#app .review-card,#app .feature-card,#app .bot-card,
+#app .cinema-card,#app .ticket-card,#app .role-card,#app .group-card,
+#app .account-card,#app .content-card,#app .mini-card{
+ background:linear-gradient(145deg,rgba(27,24,38,.92),rgba(18,17,27,.96));
+ border:1px solid var(--line);border-radius:17px;box-shadow:0 12px 32px rgba(0,0,0,.12);
+ transition:border-color .2s,transform .2s,background .2s
+}
+#app .card:hover,#app .member-card:hover,#app .game-card:hover,#app .feature-card:hover,
+#app .bot-card:hover,#app .cinema-card:hover,#app .role-card:hover,#app .group-card:hover{
+ border-color:rgba(215,165,200,.34);transform:translateY(-2px)
+}
+#app .stats,#app .stat-grid,#app .cards,#app .grid{gap:14px}
+#app .muted,#app small,.hint,.subtle{color:var(--muted)}
+#app input,#app textarea,#app select,#app .field input,#app .field textarea{
+ color:var(--text);background:#0e0c15;border:1px solid rgba(226,190,218,.19);
+ border-radius:11px;padding:12px 14px;outline:none;transition:border-color .2s,box-shadow .2s
+}
+#app input:focus,#app textarea:focus,#app select:focus,#app .field input:focus,#app .field textarea:focus{
+ border-color:rgba(215,165,200,.62);box-shadow:0 0 0 3px rgba(215,165,200,.08)
+}
+#app input::placeholder,#app textarea::placeholder{color:#817889}
+#app button,#app .btn{
+ border-radius:11px;font-family:inherit;font-weight:700;transition:transform .18s,background .18s,border-color .18s,box-shadow .18s
+}
+#app .btn-primary,#app button.primary,#app .primary-btn{
+ color:#20131e;background:linear-gradient(135deg,#e0bad4,#c994ba);border:1px solid #e0bad4;
+ box-shadow:0 5px 16px rgba(190,133,171,.12)
+}
+#app .btn-primary:hover,#app button.primary:hover,#app .primary-btn:hover{transform:translateY(-1px);box-shadow:0 9px 22px rgba(190,133,171,.18)}
+#app .btn-secondary,#app .btn:not(.btn-primary),#app button.secondary{
+ background:rgba(255,255,255,.035);color:#eee5f0;border:1px solid var(--line)
+}
+#app .btn-secondary:hover,#app .btn:not(.btn-primary):hover,#app button.secondary:hover{border-color:rgba(215,165,200,.4);background:rgba(215,165,200,.07)}
+#app a{color:#ddb9d4}
+#app table{border-collapse:separate;border-spacing:0;width:100%;overflow:hidden;border:1px solid var(--line);border-radius:13px}
+#app th{background:#1c1725;color:#dfc9dc;font-weight:750}
+#app td,#app th{padding:12px 14px;border-bottom:1px solid var(--line);text-align:right}
+#app tr:last-child td{border-bottom:0}
+#app .badge,#app .pill{border:1px solid var(--line);border-radius:999px;padding:4px 9px;background:rgba(215,165,200,.07);color:#e4c8dc;font-size:11px}
+#app .empty,#app .empty-state{padding:34px 20px;border:1px dashed rgba(226,190,218,.22);border-radius:16px;background:rgba(255,255,255,.012);color:var(--muted);text-align:center}
+#app .divider{border-color:var(--line)}
+footer{border-top:1px solid var(--line);background:rgba(10,9,16,.72);padding:28px 20px;color:var(--muted);gap:14px}
+footer b{color:#eee4ef;letter-spacing:1.2px}
+footer a{color:#d7a5c8;text-decoration:none;margin-inline:8px}
+footer a:hover{color:#fff}
+.mobile{background:rgba(11,10,17,.98);border-bottom:1px solid var(--line);backdrop-filter:blur(18px)}
+.modal{background:rgba(4,3,8,.72);backdrop-filter:blur(9px)}
+.modal-card{background:#14111d;border:1px solid rgba(215,165,200,.25);border-radius:20px;box-shadow:0 30px 100px #0009}
+.close{border:1px solid var(--line);background:#ffffff06;color:var(--text);border-radius:10px}
+#toast{border:1px solid var(--line);background:#191522;color:var(--text);border-radius:12px;box-shadow:var(--shadow)}
+.game-controls,.cinema-grid{gap:14px}
+.game-result{border-color:rgba(215,165,200,.3);background:rgba(215,165,200,.07);border-radius:14px}
+.game-log{border-color:var(--line)}
+.x-cell{border-color:var(--line)!important;border-radius:12px;background:#15121d}
+.x-cell:hover{background:rgba(215,165,200,.1)}
+.cinema-frame{border:1px solid var(--line);border-radius:15px}
+#bot-add-form,#cinema-add-form,#cinema-room-form{padding:16px;border:1px solid var(--line);border-radius:16px;background:rgba(255,255,255,.018)}
+::selection{background:rgba(215,165,200,.28);color:#fff}
+:focus-visible{outline:2px solid #d7a5c8;outline-offset:3px}
+@media(min-width:1100px){main{grid-template-columns:238px minmax(0,1fr)}}
+@media(max-width:1000px){.top{padding-inline:14px}.top nav{display:none}main{gap:14px}}
+@media(max-width:760px){
+ .top{min-height:66px;padding:10px 12px;gap:10px}
+ .brand{min-width:0}.brand img{width:38px;height:38px}.brand b{font-size:17px}
+ main{display:block;padding:14px 12px 28px}
+ .sidebar{display:none}
+ #app .hero,#app .hero-card,#app .welcome,#app .home-hero{border-radius:19px}
+ #app .card,#app .panel,#app .stat,#app .stat-card,#app .member-card,#app .game-card,
+ #app .review-card,#app .feature-card,#app .bot-card,#app .cinema-card,#app .ticket-card,
+ #app .role-card,#app .group-card,#app .account-card,#app .content-card,#app .mini-card{border-radius:14px}
+ footer{padding:24px 16px;flex-wrap:wrap}
+}
+@media(prefers-reduced-motion:reduce){*,*::before,*::after{animation-duration:.01ms!important;animation-iteration-count:1!important;scroll-behavior:auto!important;transition-duration:.01ms!important}}
