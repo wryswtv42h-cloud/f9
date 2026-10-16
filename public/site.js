@@ -11,7 +11,7 @@ const num=v=>new Intl.NumberFormat("ar-SA").format(Number(v)||0);
 async function api(url,opt={}){opt.headers=Object.assign({"Content-Type":"application/json"},opt.headers||{});if(token)opt.headers.Authorization="Bearer "+token;const controller=new AbortController();const timer=setTimeout(()=>controller.abort(),12000);let r,d={};try{r=await fetch(url,{...opt,signal:controller.signal});try{d=await r.json()}catch{} }catch(e){throw Error(e.name==="AbortError"?"الخادم تأخر بالرد، حاول مرة أخرى":"تعذر الاتصال بالخادم")}finally{clearTimeout(timer)}if(r.status===401&&url!=="/api/auth/login"&&url!=="/api/auth/register"&&url!=="/api/auth/verify"){token="";me=null;localStorage.removeItem("mld_token");nav()}if(!r.ok)throw Error(d.error||"حدث خطأ");return d}
 function toast(t){const x=$("#toast");x.textContent=t;x.classList.add("show");clearTimeout(toast.t);toast.t=setTimeout(()=>x.classList.remove("show"),2800)}
 let privateChatPoll=null;
-function modal(h){$("#modal-content").innerHTML=h;$("#modal").classList.remove("hidden")}
+function modal(h){if(privateChatPoll){clearInterval(privateChatPoll);privateChatPoll=null}$("#modal-content").innerHTML=h;$("#modal").classList.remove("hidden")}
 function closeModal(){if(privateChatPoll){clearInterval(privateChatPoll);privateChatPoll=null}$("#modal").classList.add("hidden");$("#modal-content").innerHTML=""}
 function button(text,action,cls=""){return '<button type="button" class="btn '+cls+'" data-action="'+esc(action)+'">'+text+"</button>"}
 function shell(label,title,desc,body=""){return '<div class="page"><div class="head"><div><small>'+label+"</small><h1>"+title+'</h1><p>'+desc+"</p></div></div>"+body+"</div>"}
