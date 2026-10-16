@@ -2,7 +2,7 @@
 require("dotenv").config();
 const fs=require("fs"),path=require("path"),crypto=require("crypto");
 const express=require("express"),cors=require("cors"),helmet=require("helmet"),bcrypt=require("bcryptjs");
-const {Client,GatewayIntentBits,ChannelType,PermissionFlagsBits}=require("discord.js");
+const {Client,GatewayIntentBits,ChannelType,PermissionFlagsBits,ButtonBuilder,ActionRowBuilder,ButtonStyle,ModalBuilder,TextInputBuilder,TextInputStyle}=require("discord.js");
 const {joinVoiceChannel,createAudioPlayer,createAudioResource,AudioPlayerStatus,VoiceConnectionStatus,entersState,StreamType,NoSubscriberBehavior}=require("@discordjs/voice");
 const {spawn}=require("child_process");
 const ffmpegPath=require("ffmpeg-static");
@@ -31,11 +31,35 @@ async function discordMember(query){
  try{await guild.members.fetch();const q=String(query||"").toLowerCase();return guild.members.cache.find(m=>m.id===query||m.user.username.toLowerCase()===q||m.user.tag.toLowerCase()===q||m.displayName.toLowerCase()===q)||null}catch{return null}
 }
 async function dmDiscord(member,text){try{if(member)await member.send(text);return true}catch{return false}}
+async function dmZajel(member,text,zajelId){try{if(!member)return false;const row=new ActionRowBuilder().addComponents(new ButtonBuilder().setCustomId("zajel-reply:"+zajelId).setLabel("رد على الرسالة (مرة واحدة)").setStyle(ButtonStyle.Primary));await member.send({content:text,components:[row]});return true}catch(e){console.warn("Zajel DM failed:",e.message);return false}}
 const client=new Client({intents:[GatewayIntentBits.Guilds,GatewayIntentBits.GuildMembers,GatewayIntentBits.GuildMessages,GatewayIntentBits.MessageContent,GatewayIntentBits.GuildPresences]});
 let guild=null;
 const discordSuggestCache=new Map();
 
-client.once("ready",async()=>{guild=client.guilds.cache.get(process.env.DISCORD_GUILD_ID)||client.guilds.cache.first();console.log("MLD bot ready:",client.user.tag)})
+client.once("ready",async()=>{guild=client.guilds.cache.get(process.env.DISCORD_GUILD_ID)||client.guilds.cache.first();console.log("MLD bot ready:",client.user.tag)});
+client.on("interactionCreate",async interaction=>{
+ try{
+  if(interaction.isButton()&&interaction.customId.startsWith("zajel-reply:")){
+   const zId=interaction.customId.slice("zajel-reply:".length),z=store.zajel.find(x=>x.id===zId);
+   if(!z||z.repliedAt)return interaction.reply({content:"تم استخدام الرد لهذه الرسالة مسبقًا أو أن الرسالة لم تعد متاحة.",ephemeral:true});
+   if(interaction.user.id!==z.targetId)return interaction.reply({content:"هذا الزر مخصص لمستلم الرسالة فقط.",ephemeral:true});
+   const modal=new ModalBuilder().setCustomId("zajel-reply-modal:"+zId).setTitle("الرد على رسالة الزاجل").addComponents(new ActionRowBuilder().addComponents(new TextInputBuilder().setCustomId("replyText").setLabel("اكتب ردك").setStyle(TextInputStyle.Paragraph).setRequired(true).setMaxLength(1500)));
+   return interaction.showModal(modal)
+  }
+  if(interaction.isModalSubmit()&&interaction.customId.startsWith("zajel-reply-modal:")){
+   const zId=interaction.customId.slice("zajel-reply-modal:".length),z=store.zajel.find(x=>x.id===zId);
+   if(!z||z.repliedAt)return interaction.reply({content:"تم استخدام الرد لهذه الرسالة مسبقًا أو أن الرسالة لم تعد متاحة.",ephemeral:true});
+   if(interaction.user.id!==z.targetId)return interaction.reply({content:"هذا الرد مخصص لمستلم الرسالة فقط.",ephemeral:true});
+   const replyText=interaction.fields.getTextInputValue("replyText").trim().slice(0,1500);
+   if(!replyText)return interaction.reply({content:"اكتب ردًا قبل الإرسال.",ephemeral:true});
+   z.reply=replyText;z.repliedAt=new Date().toISOString();save();log("zajel_reply",{zajelId:z.id,targetId:z.targetId,senderId:z.senderId});
+   const sender=store.users.find(u=>u.id===z.senderId);
+   let forwarded=false;
+   if(sender?.discordId){const recipient=await client.users.fetch(sender.discordId).catch(()=>null);if(recipient){await recipient.send("رد على رسالة الزاجل التي أرسلتها إلى "+z.targetName+":\n"+replyText).then(()=>{forwarded=true}).catch(()=>{})}}
+   return interaction.reply({content:forwarded?"تم إرسال ردك إلى المرسل.":"تم حفظ الرد؛ تعذر إرساله إلى الخاص، وسيبقى محفوظًا في سجل الزاجل.",ephemeral:true})
+  }
+ }catch(e){console.warn("Zajel reply interaction failed:",e.message);if(!interaction.replied&&!interaction.deferred)await interaction.reply({content:"تعذر معالجة الرد. حاول مرة أخرى.",ephemeral:true}).catch(()=>{})}
+});
 const discordToken=process.env.DISCORD_BOT_TOKEN||process.env.DISCORD_TOKEN;if(discordToken)client.login(discordToken).catch(e=>console.error("Discord login failed:",e.message));else console.error("Discord is disconnected: configure DISCORD_BOT_TOKEN or DISCORD_TOKEN in Railway.");
 async function notifyDiscord(title,description,color=0xff9cde,fields=[]){const channelId=process.env.DISCORD_NOTIFICATION_CHANNEL_ID;if(!channelId){console.warn("Discord notifications disabled: set DISCORD_NOTIFICATION_CHANNEL_ID in Railway.");return false}try{if(!client.isReady())return false;const channel=await client.channels.fetch(channelId);if(!channel||!channel.isTextBased()||typeof channel.send!=="function")throw new Error("Notification channel is unavailable or not text-based");await channel.send({embeds:[{title:String(title).slice(0,256),description:String(description).slice(0,4000),color,timestamp:new Date().toISOString(),footer:{text:"MLD · Community"},fields:fields.slice(0,25).map(x=>({name:String(x.name).slice(0,256),value:String(x.value||"—").slice(0,1024),inline:!!x.inline}))}]});return true}catch(e){console.error("Discord notification failed:",e.message);return false}}
 app.get("/health",(q,s)=>s.json({ok:true,time:new Date().toISOString(),discord:!!guild}));
@@ -64,7 +88,8 @@ app.get("/api/chat/private",auth,(q,s)=>s.json(store.privateChats.filter(c=>c.me
 app.post("/api/chat/private",auth,(q,s)=>{const members=[q.user.id,...(Array.isArray(q.body.members)?q.body.members:[])].filter((v,i,a)=>a.indexOf(v)===i).filter(v=>store.users.some(u=>u.id===v));if(members.length<2)return s.status(400).json({error:"اختر عضواً واحداً على الأقل"});const c={id:id(),name:String(q.body.name||"محادثة خاصة").slice(0,60),ownerId:q.user.id,members,messages:[]};store.privateChats.push(c);log("private_create",{chatId:c.id,ownerId:q.user.id,members});save();s.json(c)});
 app.get("/api/chat/private/:id",auth,(q,s)=>{const c=store.privateChats.find(x=>x.id===q.params.id&&x.members.includes(q.user.id));if(!c)return s.status(404).json({error:"المحادثة غير موجودة"});s.json(c)});
 app.post("/api/chat/private/:id/message",auth,(q,s)=>{const c=store.privateChats.find(x=>x.id===q.params.id&&x.members.includes(q.user.id));if(!c)return s.status(404).json({error:"المحادثة غير موجودة"});c.messages.push({id:id(),userId:q.user.id,name:q.user.displayName,message:String(q.body.message||"").slice(0,1000),at:new Date().toISOString()});save();s.json(c)});
-app.post("/api/zajel",auth,async(q,s)=>{const m=await discordMember(q.body.discordUsername);if(!m)return s.status(404).json({error:"عضو Discord غير موجود"});const text=q.body.named?"رسالة من "+q.user.displayName+" (منشن):\\n"+q.body.message:"رسالة مجهولة من إدارة/مجتمع MLD:\\n"+q.body.message;const ok=await dmDiscord(m,text);if(!ok)return s.status(500).json({error:"تعذر إرسال الرسالة"});const z={id:id(),senderId:q.user.id,senderName:q.user.displayName,targetId:m.id,targetName:m.displayName,message:String(q.body.message||""),named:!!q.body.named,at:new Date().toISOString()};store.zajel.push(z);log("zajel",z);save();s.json({ok:true})});
+app.get("/api/zajel/mine",auth,(q,s)=>s.json(store.zajel.filter(z=>z.senderId===q.user.id).map(z=>({id:z.id,targetName:z.targetName,message:z.message,named:z.named,at:z.at,reply:z.reply||null,repliedAt:z.repliedAt||null}))));
+app.post("/api/zajel",auth,async(q,s)=>{const m=await discordMember(q.body.discordUsername);if(!m)return s.status(404).json({error:"عضو Discord غير موجود"});const z={id:id(),senderId:q.user.id,senderName:q.user.displayName,senderDiscordId:q.user.discordId||null,targetId:m.id,targetName:m.displayName,message:String(q.body.message||"").slice(0,1500),named:!!q.body.named,at:new Date().toISOString()};const text=z.named?"رسالة من "+q.user.displayName+" (منشن):\\n"+z.message:"رسالة مجهولة من مجتمع MLD:\\n"+z.message;const ok=await dmZajel(m,text,z.id);if(!ok)return s.status(500).json({error:"تعذر إرسال الرسالة. تأكد من أن الرسائل الخاصة متاحة."});store.zajel.push(z);log("zajel",z);save();s.json({ok:true,id:z.id})});
 app.get("/api/groups",async(q,s)=>s.json(store.groups.filter(g=>g.status==="approved").map(g=>({id:g.id,name:g.name,description:g.description,ownerName:g.ownerName}))));
 app.post("/api/groups",auth,async(q,s)=>{const g={id:id(),name:String(q.body.name||"قروب").slice(0,60),description:String(q.body.description||"").slice(0,1000),ownerId:q.user.id,ownerName:q.user.displayName,discordId:q.user.discordId,status:"pending",createdAt:new Date().toISOString()};store.groups.push(g);log("group_request",g);save();await notifyDiscord("طلب قروب جديد",`طلب ${g.ownerName} إنشاء قروب: ${g.name}`,0xa36cff,[{name:"الوصف",value:g.description||"بدون وصف"},{name:"الحالة",value:"بانتظار المراجعة"}]);s.json(g)});
 app.post("/api/groups/:id/join",auth,(q,s)=>{const g=store.groups.find(x=>x.id===q.params.id&&x.status==="approved");if(!g)return s.status(404).json({error:"القروب غير موجود"});g.requests=g.requests||[];if(!g.requests.includes(q.user.id))g.requests.push(q.user.id);log("group_join",{groupId:g.id,userId:q.user.id});save();s.json({ok:true})});
