@@ -292,3 +292,17 @@ button:disabled,.btn:disabled{opacity:.55;cursor:not-allowed;transform:none!impo
  #app .form input,#app .form textarea,#app .form select{width:100%;min-width:0}
  #app .actions,#app .game-controls{flex-wrap:wrap}
 }
+
+
+/* Bot command controls */
+.bot-command-groups{display:grid;gap:12px;margin:12px 0}
+.bot-command-group{min-width:0;border:1px solid var(--line);border-radius:14px;padding:12px;background:rgba(255,255,255,.012)}
+.bot-command-group legend{padding:0 8px;color:#d1c4ca;font-weight:800}
+.bot-command-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(190px,1fr));gap:8px}
+.command-toggle{display:flex!important;align-items:center;gap:9px!important;min-width:0;padding:9px 10px;border:1px solid var(--line);border-radius:10px;background:rgba(255,255,255,.018);cursor:pointer}
+.command-toggle:has(input:checked){border-color:rgba(199,178,187,.4);background:rgba(199,178,187,.065)}
+.command-toggle input{flex:0 0 auto;width:16px;height:16px;margin:0}
+.command-toggle span{font-size:12px;line-height:1.4}
+.command-toggle code{margin-inline-start:auto;font-size:10px;color:var(--muted);direction:ltr}
+.bot-settings{margin-top:14px}
+@media(max-width:760px){.bot-command-grid{grid-template-columns:1fr}.command-toggle{min-height:42px}}
