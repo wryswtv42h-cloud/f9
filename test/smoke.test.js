@@ -93,3 +93,15 @@ test("per-command enable/disable settings are enforced by the server", () => {
   assert.match(ui, /name="enabledCommands"/);
   assert.match(ui, /botCommandGroups/);
 });
+
+test("Zajel messages support one-time replies and sender history", () => {
+  const source = read("index.js");
+  const ui = read("public/site.js");
+  assert.match(source, /zajel-reply:/);
+  assert.match(source, /zajel-reply-modal:/);
+  assert.match(source, /if\(!z\|\|z\.repliedAt\)/);
+  assert.match(source, /setDisabled\(true\)/);
+  assert.match(source, /app\.get\("\/api\/zajel\/mine"/);
+  assert.match(ui, /\/api\/zajel\/mine/);
+  assert.match(ui, /الرد المستلم/);
+});
