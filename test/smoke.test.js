@@ -84,3 +84,12 @@ test("managed bots have real prefix commands, limited slash commands, and per-bo
   assert.match(source, /name:"server",description:/);
   assert.match(source, /name:"botinfo",description:/);
 });
+
+test("per-command enable/disable settings are enforced by the server", () => {
+  const source = read("index.js");
+  const ui = read("public/site.js");
+  assert.match(source, /bot\.disabledCommands\.includes\(command\)/);
+  assert.match(source, /q\.body\.disabledCommands!==undefined/);
+  assert.match(ui, /name="enabledCommands"/);
+  assert.match(ui, /botCommandGroups/);
+});
