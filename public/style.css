@@ -263,3 +263,32 @@ footer a:hover{color:#fff}
  footer{padding:24px 16px;flex-wrap:wrap}
 }
 @media(prefers-reduced-motion:reduce){*,*::before,*::after{animation-duration:.01ms!important;animation-iteration-count:1!important;scroll-behavior:auto!important;transition-duration:.01ms!important}}
+
+
+/* MLD rebuild quality pass: accessible states and consistent responsive controls */
+.top nav button.active,.mobile button.active{
+ color:#fff;background:linear-gradient(90deg,rgba(215,165,200,.15),rgba(169,151,216,.09));
+ border:1px solid rgba(215,165,200,.2)
+}
+.mobile button.active{box-shadow:inset -2px 0 #d7a5c8}
+#menu[aria-expanded="true"]{color:#f8e5f1;background:rgba(215,165,200,.12);border-color:rgba(215,165,200,.42)}
+button:disabled,.btn:disabled{opacity:.55;cursor:not-allowed;transform:none!important;box-shadow:none!important}
+#app form button[type="submit"]{min-height:44px}
+#app input[type="checkbox"],#app input[type="radio"]{accent-color:#d7a5c8}
+#app .form label{display:grid;gap:8px;color:#d5cbd9}
+#app .form small{line-height:1.8}
+#app .head small{color:#d7a5c8;font-weight:800;letter-spacing:2px}
+#app .session,#app .row{min-width:0}
+#app .row>div{min-width:0}
+#app img{max-width:100%}
+#app iframe{max-width:100%;border:0}
+@media(max-width:760px){
+ .page{padding:26px 0 44px}
+ .head{align-items:flex-start;gap:12px;margin-bottom:20px}
+ .head h1{overflow-wrap:anywhere}
+ .mobile{top:70px;max-height:calc(100dvh - 88px);padding:10px}
+ .mobile button{min-height:43px}
+ #app .form{gap:13px}
+ #app .form input,#app .form textarea,#app .form select{width:100%;min-width:0}
+ #app .actions,#app .game-controls{flex-wrap:wrap}
+}
