@@ -151,7 +151,7 @@ app.patch("/api/owner/subscriptions/:id",auth,owner,(q,s)=>{const x=store.subscr
 app.get("/api/owner/settings",auth,owner,(q,s)=>s.json(store.settings));
 app.patch("/api/owner/settings",auth,owner,(q,s)=>{store.settings.announcement=String(q.body.announcement||"");store.settings.announcementColor=String(q.body.announcementColor||"#ff9cde");save();s.json(store.settings)});
 app.patch("/api/owner/questions",auth,owner,(q,s)=>{store.settings.questions=Array.isArray(q.body.questions)?q.body.questions:[];save();s.json({questions:store.settings.questions})});
-app.get("/api/admin/groups",auth,owner,(q,s)=>s.json({groups:store.groups}));
+
 bootManagedBots().catch(e=>console.error("Managed bot startup failed:",e.message));
 app.use(express.static(path.join(__dirname,"public")));
 app.get("*",(q,s)=>s.sendFile(path.join(__dirname,"public","index.html")));
