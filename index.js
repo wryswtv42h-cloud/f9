@@ -11,7 +11,7 @@ const requestWindows=new Map();
 app.use((req,res,next)=>{if(!/^\/api\/(auth|ai|discord)\//.test(req.path))return next();const now=Date.now(),key=(req.ip||req.socket.remoteAddress||"unknown")+":"+req.path.split("/").slice(0,3).join("/");const cfg=req.path.startsWith("/api/auth/")?{limit:12,window:15*60e3}:req.path.startsWith("/api/ai/")?{limit:12,window:60e3}:{limit:90,window:60e3};let w=requestWindows.get(key);if(!w||now-w.start>cfg.window)w={start:now,count:0};w.count++;requestWindows.set(key,w);if(requestWindows.size>5000)for(const [k,v] of requestWindows)if(now-v.start>15*60e3)requestWindows.delete(k);res.set("RateLimit-Limit",String(cfg.limit));res.set("RateLimit-Remaining",String(Math.max(0,cfg.limit-w.count)));if(w.count>cfg.limit)return res.status(429).json({error:"طلبات كثيرة خلال وقت قصير. انتظر قليلاً ثم أعد المحاولة."});next()});
 const PORT=Number(process.env.PORT||3000), DATA_DIR=process.env.DATA_DIR||"/data", DATA=path.join(DATA_DIR,"data.json"), LEGACY_DATA=path.join(__dirname,"data.json");
 const IDS={owner:process.env.OWNER_ROLE_ID||"1530712642384040027",coowner:process.env.COOWNER_ROLE_ID||"1521187079336362024",founder:process.env.FOUNDER_ROLE_ID||"1531109479264026706",senior:process.env.SENIOR_STAFF_ROLE_ID||"1548732297669255259",staff:process.env.STAFF_ROLE_ID||"1548732341185155103",junior:process.env.JUNIOR_STAFF_ROLE_ID||"1548732606508703744"};
-const base={users:[],sessions:[],reviews:[],chat:[],privateChats:[],tickets:[],applications:[],groups:[],zajel:[],games:[],bots:[],logs:[],subscriptions:[],settings:{announcement:"مرحباً بكم في MLD · Community",announcementColor:"#ff9cde",cinema:[],cinemaVoiceChannelId:""}};
+const base={users:[],sessions:[],reviews:[],chat:[],privateChats:[],tickets:[],applications:[],groups:[],zajel:[],games:[],bots:[],logs:[],subscriptions:[],settings:{announcement:"مرحباً بكم في MLD · Community",announcementColor:"#c7b2bb",cinema:[],cinemaVoiceChannelId:""}};
 let store=base;
 try{const source=fs.existsSync(DATA)?DATA:LEGACY_DATA;if(fs.existsSync(source))store=Object.assign(base,JSON.parse(fs.readFileSync(source,"utf8")))}catch(error){console.error("Could not load saved MLD data:",error.message)}
 try{fs.mkdirSync(DATA_DIR,{recursive:true});if(!fs.existsSync(DATA))fs.writeFileSync(DATA,JSON.stringify(store,null,2))}catch(error){console.error("Could not initialize persistent MLD storage:",error.message)}
@@ -149,9 +149,9 @@ app.get("/api/owner/subscriptions",auth,owner,(q,s)=>s.json(store.subscriptions)
 app.post("/api/owner/subscriptions",auth,owner,(q,s)=>{const x={id:id(),userId:q.body.userId,bot:q.body.bot,active:true,at:new Date().toISOString()};store.subscriptions.push(x);save();log("subscription",x);s.json(x)});
 app.patch("/api/owner/subscriptions/:id",auth,owner,(q,s)=>{const x=store.subscriptions.find(x=>x.id===q.params.id);if(!x)return s.status(404).json({error:"الاشتراك غير موجود"});x.active=!!q.body.active;save();s.json(x)});
 app.get("/api/owner/settings",auth,owner,(q,s)=>s.json(store.settings));
-app.patch("/api/owner/settings",auth,owner,(q,s)=>{store.settings.announcement=String(q.body.announcement||"");store.settings.announcementColor=String(q.body.announcementColor||"#ff9cde");save();s.json(store.settings)});
+app.patch("/api/owner/settings",auth,owner,(q,s)=>{store.settings.announcement=String(q.body.announcement||"");store.settings.announcementColor=String(q.body.announcementColor||"#c7b2bb");save();s.json(store.settings)});
 app.patch("/api/owner/questions",auth,owner,(q,s)=>{store.settings.questions=Array.isArray(q.body.questions)?q.body.questions:[];save();s.json({questions:store.settings.questions})});
-app.get("/api/admin/groups",auth,owner,(q,s)=>s.json({groups:store.groups}));
+
 bootManagedBots().catch(e=>console.error("Managed bot startup failed:",e.message));
 app.use(express.static(path.join(__dirname,"public")));
 app.get("*",(q,s)=>s.sendFile(path.join(__dirname,"public","index.html")));
