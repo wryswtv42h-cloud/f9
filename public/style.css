@@ -306,3 +306,13 @@ button:disabled,.btn:disabled{opacity:.55;cursor:not-allowed;transform:none!impo
 .command-toggle code{margin-inline-start:auto;font-size:10px;color:var(--muted);direction:ltr}
 .bot-settings{margin-top:14px}
 @media(max-width:760px){.bot-command-grid{grid-template-columns:1fr}.command-toggle{min-height:42px}}
+
+
+/* Zajel reply history */
+.zajel-history{display:grid;gap:12px;margin-top:28px}
+.zajel-reply{margin-top:12px;padding:12px;border:1px solid rgba(199,178,187,.24);border-radius:12px;background:rgba(199,178,187,.055)}
+.zajel-reply>b,.zajel-reply>strong{color:#d1c4ca}
+.zajel-reply p{white-space:pre-wrap;overflow-wrap:anywhere}
+#suggest button{display:flex;align-items:center;gap:10px;width:100%;text-align:right}
+#suggest button img{width:34px;height:34px;object-fit:cover;border-radius:50%}
+#suggest button span{display:grid;gap:2px}
