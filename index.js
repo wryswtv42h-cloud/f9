@@ -43,6 +43,7 @@ client.on("interactionCreate",async interaction=>{
    const zId=interaction.customId.slice("zajel-reply:".length),z=store.zajel.find(x=>x.id===zId);
    if(!z||z.repliedAt)return interaction.reply({content:"تم استخدام الرد لهذه الرسالة مسبقًا أو أن الرسالة لم تعد متاحة.",ephemeral:true});
    if(interaction.user.id!==z.targetId)return interaction.reply({content:"هذا الزر مخصص لمستلم الرسالة فقط.",ephemeral:true});
+   z.replyChannelId=interaction.channelId;z.replyMessageId=interaction.message.id;save();
    const modal=new ModalBuilder().setCustomId("zajel-reply-modal:"+zId).setTitle("الرد على رسالة الزاجل").addComponents(new ActionRowBuilder().addComponents(new TextInputBuilder().setCustomId("replyText").setLabel("اكتب ردك").setStyle(TextInputStyle.Paragraph).setRequired(true).setMaxLength(1500)));
    return interaction.showModal(modal)
   }
@@ -53,6 +54,7 @@ client.on("interactionCreate",async interaction=>{
    const replyText=interaction.fields.getTextInputValue("replyText").trim().slice(0,1500);
    if(!replyText)return interaction.reply({content:"اكتب ردًا قبل الإرسال.",ephemeral:true});
    z.reply=replyText;z.repliedAt=new Date().toISOString();save();log("zajel_reply",{zajelId:z.id,targetId:z.targetId,senderId:z.senderId});
+   if(z.replyChannelId&&z.replyMessageId){const replyChannel=await client.channels.fetch(z.replyChannelId).catch(()=>null);const original=await replyChannel?.messages?.fetch(z.replyMessageId).catch(()=>null);if(original)await original.edit({components:[new ActionRowBuilder().addComponents(new ButtonBuilder().setCustomId("zajel-reply:"+z.id).setLabel("تم استخدام الرد").setStyle(ButtonStyle.Secondary).setDisabled(true))]}).catch(()=>{})}
    const sender=store.users.find(u=>u.id===z.senderId);
    let forwarded=false;
    if(sender?.discordId){const recipient=await client.users.fetch(sender.discordId).catch(()=>null);if(recipient){await recipient.send("رد على رسالة الزاجل التي أرسلتها إلى "+z.targetName+":\n"+replyText).then(()=>{forwarded=true}).catch(()=>{})}}
