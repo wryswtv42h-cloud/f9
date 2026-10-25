@@ -68,18 +68,82 @@ function answerForm(placeholder){return '<form id="game-answer" class="game-cont
 $$("[data-x]").forEach(b=>b.onclick=()=>act("move",Number(b.dataset.x)));$$("[data-word]").forEach(b=>b.onclick=()=>act("guess",Number(b.dataset.word)));$$("[data-action^=vote:]").forEach(b=>b.onclick=()=>act("vote",b.dataset.action.slice(5)));$$("[data-action^=trap:]").forEach(b=>b.onclick=()=>act("choose",Number(b.dataset.action.slice(5))));$$("[data-action^=choose:]").forEach(b=>b.onclick=()=>act("choose",b.dataset.action.slice(7)));$$("[data-action]").filter(b=>["spin","pass","press","hide","invest"].includes(b.dataset.action)).forEach(b=>b.onclick=()=>act(b.dataset.action));$("#game-answer")?.addEventListener("submit",e=>{e.preventDefault();act(g.game==="Qosar"?"guess":g.game==="Company"?"invest":"answer",e.target.value.value)})}
 async function groups(){getApp().innerHTML=shell("GROUPS","القروبات","طلب إنشاء قروب Discord يمر على الأونر، وبعد القبول ينشئ البوت الفئة والشات والروم والرتبة.",(me?button("إنشاء قروب","new-group","primary"):"")+'<div id="groups" class="grid"></div>');if(me)$("#groups").insertAdjacentHTML("beforebegin",'');$("#new-group")?.addEventListener("click",newGroup);try{const d=await api("/api/groups");$("#groups").innerHTML=d.map(g=>'<article class="feature"><b>◇</b><h2>'+esc(g.name)+'</h2><p>'+esc(g.description)+'</p>'+button("طلب انضمام","join-group:"+g.id,"ghost")+"</article>").join("")||'<div class="empty">لا توجد قروبات معتمدة</div>';$$("[data-action^=join-group:]").forEach(x=>x.onclick=async()=>{if(!me)return auth();try{await api("/api/groups/"+x.dataset.action.slice(11)+"/join",{method:"POST"});toast("تم إرسال الطلب")}catch(e){toast(e.message)}})}catch(e){toast(e.message)}}
 function newGroup(){modal('<form id="gf" class="form"><h2>إنشاء قروب</h2><input class="input" name="name" placeholder="اسم القروب" required><textarea class="input" name="description" placeholder="الوصف" required></textarea><button class="btn primary">إرسال للأونر</button></form>');$("#gf").onsubmit=async e=>{e.preventDefault();try{await api("/api/groups",{method:"POST",body:JSON.stringify(Object.fromEntries(new FormData(e.target)))});closeModal();toast("وصل الطلب للأونر")}catch(x){toast(x.message)}}}
+let cinemaState={type:"movie",query:"",page:1,items:[],loading:false,favorites:new Set(JSON.parse(localStorage.getItem("mld_cinema_favs")||"[]"))};
+const cinemaLicenseQuery='mediatype:movies AND (licenseurl:creativecommons.org OR licenseurl:publicdomain)';
+function cinemaCard(x){const title=esc(x.title||x.identifier),id=String(x.identifier||"");const safeId=/^[a-zA-Z0-9._-]+$/.test(id);if(!safeId)return "";const poster="https://archive.org/services/img/"+encodeURIComponent(id);const saved=cinemaState.favorites.has(id);return '<button class="cinema-title-card" data-cinema-play="'+esc(id)+'" type="button"><span class="cinema-poster"><img loading="lazy" src="'+poster+'" alt="" onerror="this.style.display=\'none\'"><span class="cinema-poster-fallback">🎬</span><span class="cinema-free-tag">مجاني</span><span class="cinema-play-mark">▶</span><span class="cinema-fav-mark">'+(saved?"♥":"♡")+'</span></span><span class="cinema-title-text"><b>'+title+'</b><small>'+esc(x.year||"كلاسيكي")+" · "+esc(Array.isArray(x.creator)?x.creator[0]:(x.creator||"أرشيف الإنترنت"))+'</small></span></button>'}
+async function cinemaSearch(reset=true){
+ if(cinemaState.loading)return;
+ if(reset){cinemaState.page=1;cinemaState.items=[]}
+ cinemaState.loading=true;
+ const results=$("#cinema-results"),more=$("#cinema-more"),status=$("#cinema-search-status");
+ if(results&&reset)results.innerHTML='<div class="cinema-loading"><span class="cinema-spinner"></span><b>نبحث في المكتبة المجانية...</b><small>نحمّل العناوين المتاحة من أرشيف الإنترنت</small></div>';
+ if(status)status.textContent="جارٍ البحث...";
+ if(more)more.disabled=true;
+ try{
+  const terms=cinemaState.query.trim().replace(/[+\-!(){}\[\]^"~*?:\\/]/g," ").slice(0,100);
+  const titleQuery=terms?'+AND+title:('+encodeURIComponent(terms.split(/\s+/).filter(Boolean).join(" AND "))+')':"";
+  const typeQuery=cinemaState.type==="series"?'+AND+(subject:television+OR+subject:series+OR+title:episode)':"";
+  const q=encodeURIComponent(cinemaLicenseQuery).replace(/%20/g,"+")+titleQuery+typeQuery;
+  const url="https://archive.org/advancedsearch.php?q="+q+"&fl%5B%5D=identifier&fl%5B%5D=title&fl%5B%5D=description&fl%5B%5D=year&fl%5B%5D=creator&fl%5B%5D=licenseurl&fl%5B%5D=subject&sort%5B%5D=downloads+desc&rows=30&page="+cinemaState.page+"&output=json";
+  const ctrl=new AbortController(),timer=setTimeout(()=>ctrl.abort(),15000);
+  let data;try{const r=await fetch(url,{signal:ctrl.signal,headers:{Accept:"application/json"}});if(!r.ok)throw Error("تعذر الوصول إلى مصدر المكتبة");data=await r.json()}finally{clearTimeout(timer)}
+  const docs=data?.response?.docs||[];
+  const verified=docs.filter(x=>/creativecommons\.org|publicdomain/i.test(String(x.licenseurl||"")));
+  const existing=new Set(cinemaState.items.map(x=>x.identifier));
+  cinemaState.items.push(...verified.filter(x=>x.identifier&&!existing.has(x.identifier)));
+  const total=Number(data?.response?.numFound)||0;
+  const count=cinemaState.items.length;
+  if(results)results.innerHTML=count?cinemaState.items.map(cinemaCard).join(""):'<div class="cinema-empty"><span>🎞️</span><h3>ما لقينا نتائج مطابقة</h3><p>جرّب اسمًا آخر أو بدّل بين الأفلام والمسلسلات. نعرض العناوين التي تُظهر بيانات ترخيص مفتوح فقط.</p></div>';
+  if(status)status.textContent=count?("تم العثور على "+num(count)+" عنوانًا متاحًا · نتائج مرخصة مفتوحة"):"لا توجد نتائج مرخصة مطابقة لهذا البحث";
+  if(more){more.hidden=docs.length<30||count>=total;more.disabled=false}
+ }catch(e){
+  if(results)results.innerHTML='<div class="cinema-empty"><span>📡</span><h3>تعذر تحميل المكتبة الآن</h3><p>قد يكون مصدر الأرشيف بطيئًا أو غير متاح مؤقتًا. أعد المحاولة بعد قليل.</p><button class="btn primary" data-cinema-retry>إعادة المحاولة</button></div>';
+  if(status)status.textContent="تعذر الاتصال بالمصدر الخارجي";
+  if(more)more.disabled=false;
+ }finally{cinemaState.loading=false}
+}
 async function cinema(){
- const [items,status]=await Promise.all([api("/api/cinema"),api("/api/cinema/status").catch(()=>({}))]);
  const canManage=me?.role==="owner";
- let body='<div class="cinema-status"><b>حالة Discord:</b> '+(status.discordConnected?"متصل":"غير متصل")+' · <b>الروم:</b> '+esc(status.voiceChannel?.name||"غير محدد")+'</div>';
- if(canManage)body+=button("إيقاف تشغيل صوت السينما","cinema-stop","danger")+'<form id="cinema-room-form" class="form"><label>الروم الصوتي<select class="input" name="voiceChannelId"><option value="">بدون روم</option></select></label><button class="btn ghost">حفظ الروم</button></form><form id="cinema-add-form" class="form"><h3>إضافة فيلم أو رابط مشاهدة</h3><input class="input" name="title" placeholder="اسم الفيلم" required><input class="input" name="url" type="url" placeholder="رابط قانوني للمشاهدة" required><textarea class="input" name="description" placeholder="وصف الفيلم"></textarea><button class="btn primary">إضافة للمكتبة</button></form>';
- body+='<div class="cinema-grid">'+(items.map(x=>{let embed=x.embedUrl?'<div class="cinema-frame"><iframe src="'+esc(x.embedUrl)+'" title="'+esc(x.title)+'" loading="lazy" allow="encrypted-media; picture-in-picture" allowfullscreen></iframe></div>':x.mediaType==="video"?'<div class="cinema-frame"><video controls playsinline src="'+esc(x.url)+'"></video></div>':x.mediaType==="audio"?'<audio controls preload="none" src="'+esc(x.url)+'"></audio>':"";return '<article class="feature"><span>🎬</span><h2>'+esc(x.title)+'</h2><p>'+esc(x.description||"جلسة مشاهدة")+'</p>'+embed+'<div class="game-controls"><a class="btn ghost" href="'+esc(x.url)+'" target="_blank" rel="noopener noreferrer">فتح المشاهدة</a>'+(canManage?button("إعلان بدء الجلسة","cinema-start:"+x.id,"primary")+button("حذف","cinema-delete:"+x.id,"danger"):"")+'</div></article>'}).join("")||'<div class="empty">المكتبة فارغة. أضف محتوى تملك حق عرضه من لوحة الأونر.</div>')+'</div>';
- getApp().innerHTML=shell("CINEMA","السينما","مكتبة مشاهدة ومزامنة روابط المحتوى، مع تحديد روم صوتي وإعلان بدء الجلسة.",body);
+ let ownerHtml="";
+ let status={};
+ try{status=await api("/api/cinema/status")}catch{}
+ let body='<section class="cinema-hero"><div class="cinema-hero-copy"><span class="cinema-eyebrow">MLD CINEMA · FREE & OPEN</span><h2>ليلتك تبدأ من هنا<span> 🎬</span></h2><p>اكتشف أفلامًا كلاسيكية وأعمالًا متاحة مجانًا عبر مصادر مفتوحة. ابحث، اختر، واستمتع بالمشاهدة مباشرة من داخل ملاذ.</p><div class="cinema-hero-tags"><span>✦ مشاهدة مجانية</span><span>✦ مصادر مفتوحة</span><span>✦ بدون اشتراك</span></div></div><div class="cinema-reel" aria-hidden="true"><span>🎞️</span><i>MLD</i><b>YOUR NEXT STORY</b></div></section>';
+ body+='<div class="cinema-toolbar"><label class="cinema-search"><span>⌕</span><input id="cinema-search" type="search" placeholder="ابحث عن فيلم أو مسلسل..." value="'+esc(cinemaState.query)+'" autocomplete="off"><kbd>بحث</kbd></label><div class="cinema-types"><button type="button" data-cinema-type="movie" class="'+(cinemaState.type==="movie"?"active":"")+'">الأفلام</button><button type="button" data-cinema-type="series" class="'+(cinemaState.type==="series"?"active":"")+'">المسلسلات والحلقات</button><button type="button" data-cinema-type="favorites" class="'+(cinemaState.type==="favorites"?"active":"")+'">قائمتي ♥</button></div></div>';
+ body+='<div class="cinema-section-head"><div><span class="cinema-eyebrow">OPEN LIBRARY</span><h2 id="cinema-heading">مختارات مجانية</h2><p id="cinema-search-status" aria-live="polite">نجهّز المكتبة...</p></div><a href="https://archive.org/details/movies" target="_blank" rel="noopener noreferrer">مصدر المكتبة ↗</a></div><div id="cinema-results" class="cinema-catalog-grid"><div class="cinema-loading"><span class="cinema-spinner"></span><b>جارٍ تجهيز المكتبة...</b></div></div><div class="cinema-more-wrap"><button id="cinema-more" class="btn ghost" type="button" hidden>عرض المزيد من العناوين</button></div>';
+ body+='<p class="cinema-legal-note">المشاهدة تعتمد على الملفات التي يوفّرها أرشيف الإنترنت، وقد تختلف الجودة والتوفّر والترخيص من عنوان لآخر. نعرض نتائج تحمل بيانات ترخيص مفتوح، لكن تحقق من صفحة المصدر لكل عنوان. MLD لا تستضيف الأفلام ولا تتجاوز الاشتراكات أو أنظمة الحماية.</p>';
+ if(canManage){
+  let items=[];try{items=await api("/api/cinema")}catch{}
+  body+='<details class="cinema-owner-tools"><summary>إدارة مكتبة ملاذ الخاصة</summary><div class="cinema-status"><b>حالة Discord:</b> '+(status.discordConnected?"متصل":"غير متصل")+' · <b>الروم:</b> '+esc(status.voiceChannel?.name||"غير محدد")+'</div>'+button("إيقاف تشغيل صوت السينما","cinema-stop","danger")+'<form id="cinema-room-form" class="form"><label>الروم الصوتي<select class="input" name="voiceChannelId"><option value="">بدون روم</option></select></label><button class="btn ghost">حفظ الروم</button></form><form id="cinema-add-form" class="form"><h3>إضافة محتوى تملك حق عرضه</h3><input class="input" name="title" placeholder="عنوان الفيلم أو المسلسل" required><input class="input" name="url" type="url" placeholder="رابط رسمي أو ملف تملك حق عرضه" required><textarea class="input" name="description" placeholder="الوصف"></textarea><button class="btn primary">إضافة للمكتبة</button></form><div class="cinema-owner-list">'+(items.map(x=>'<div class="row"><b>'+esc(x.title)+'</b><a href="'+esc(x.url)+'" target="_blank" rel="noopener noreferrer">فتح المصدر</a>'+button("حذف","cinema-delete:"+x.id,"danger")+'</div>').join("")||'<div class="empty">لا يوجد محتوى مضاف من المالك.</div>')+'</div></details>';
+ }
+ getApp().innerHTML=shell("CINEMA","منصة الأفلام","مكتبة سينمائية مجانية للمحتوى المتاح قانونيًا، مع بحث ومشاهدة مباشرة وقائمة مفضلة.",body);
+ const results=$("#cinema-results");
+ function drawFavorites(){
+  const favs=cinemaState.items.filter(x=>cinemaState.favorites.has(x.identifier));
+  if(results)results.innerHTML=favs.length?favs.map(cinemaCard).join(""):'<div class="cinema-empty"><span>♡</span><h3>قائمتك لسه فاضية</h3><p>اضغط القلب على أي عنوان لإضافته إلى قائمتك.</p></div>';
+  $("#cinema-heading").textContent="قائمتي";
+  $("#cinema-search-status").textContent=num(favs.length)+" عنوانًا محفوظًا على هذا الجهاز";
+  $("#cinema-more").hidden=true;
+ }
+ if(cinemaState.type==="favorites")drawFavorites();else await cinemaSearch(true);
+ $("#cinema-search")?.addEventListener("input",e=>{clearTimeout(cinema.searchTimer);cinema.searchTimer=setTimeout(()=>{cinemaState.query=e.target.value;$("#cinema-heading").textContent=cinemaState.type==="series"?"مسلسلات وحلقات":"أفلام مجانية";cinemaSearch(true)},400)});
+ $$("[data-cinema-type]").forEach(b=>b.onclick=()=>{cinemaState.type=b.dataset.cinemaType;$$("[data-cinema-type]").forEach(x=>x.classList.toggle("active",x===b));$("#cinema-heading").textContent=cinemaState.type==="series"?"مسلسلات وحلقات":cinemaState.type==="favorites"?"قائمتي":"أفلام مجانية";$("#cinema-search").disabled=cinemaState.type==="favorites";if(cinemaState.type==="favorites")drawFavorites();else cinemaSearch(true)});
+ $("#cinema-more")?.addEventListener("click",()=>{cinemaState.page++;cinemaSearch(false)});
+ $("#cinema-results")?.addEventListener("click",e=>{
+  const fav=e.target.closest("[data-cinema-fav]");
+  if(fav){const id=fav.dataset.cinemaFav;if(cinemaState.favorites.has(id))cinemaState.favorites.delete(id);else cinemaState.favorites.add(id);localStorage.setItem("mld_cinema_favs",JSON.stringify([...cinemaState.favorites]));if(cinemaState.type==="favorites")drawFavorites();else cinemaSearchRenderOnly();return}
+  const card=e.target.closest("[data-cinema-play]");if(!card)return;const id=card.dataset.cinemaPlay;if(!/^[a-zA-Z0-9._-]+$/.test(id))return;const item=cinemaState.items.find(x=>x.identifier===id);if(!item)return;
+  const title=esc(item.title||id),desc=esc(item.description||"عمل متاح عبر أرشيف الإنترنت"),embed="https://archive.org/embed/"+encodeURIComponent(id);
+  modal('<div class="cinema-player-modal"><div class="cinema-player-head"><div><span class="cinema-eyebrow">NOW PLAYING · INTERNET ARCHIVE</span><h2>'+title+'</h2><p>'+desc+'</p></div><button class="close" data-cinema-close>×</button></div><div class="cinema-player-frame"><iframe src="'+embed+'" title="'+title+'" loading="eager" allow="autoplay; fullscreen; picture-in-picture" allowfullscreen referrerpolicy="strict-origin-when-cross-origin"></iframe></div><div class="cinema-player-footer"><span>مصدر المشاهدة: Internet Archive</span><a href="https://archive.org/details/'+encodeURIComponent(id)+'" target="_blank" rel="noopener noreferrer">صفحة العنوان والترخيص ↗</a></div></div>');
+  $("#modal-content")?.querySelector("[data-cinema-close]")?.addEventListener("click",closeModal);
+ });
+ $("#cinema-results")?.addEventListener("error",e=>{if(e.target.matches("img"))e.target.style.display="none"},true);
+ function cinemaSearchRenderOnly(){if(results)results.innerHTML=cinemaState.items.map(cinemaCard).join("")}
+ $$("[data-cinema-retry]").forEach(b=>b.onclick=()=>cinemaSearch(true));
  if(canManage){
   try{const channels=await api("/api/discord/voice-channels");$("#cinema-room-form select").innerHTML='<option value="">بدون روم</option>'+channels.map(x=>'<option value="'+esc(x.id)+'" '+(x.id===status.voiceChannel?.id?"selected":"")+'>'+esc(x.name)+'</option>').join("")}catch(e){toast(e.message)}
   $("#cinema-room-form").onsubmit=async e=>{e.preventDefault();try{await api("/api/cinema/room",{method:"POST",body:JSON.stringify(Object.fromEntries(new FormData(e.target)))});toast("تم حفظ الروم");cinema()}catch(err){toast(err.message)}};
-  $("#cinema-add-form").onsubmit=async e=>{e.preventDefault();try{await api("/api/cinema",{method:"POST",body:JSON.stringify(Object.fromEntries(new FormData(e.target)))});toast("أضيف للمكتبة");cinema()}catch(err){toast(err.message)}};
-  $('[data-action="cinema-stop"]').forEach(b=>b.onclick=async()=>{try{await api("/api/cinema/stop",{method:"POST"});toast("تم إيقاف تشغيل الصوت")}catch(err){toast(err.message)}});$("[data-action^=cinema-start:]").forEach(b=>b.onclick=async()=>{try{const d=await api("/api/cinema/start",{method:"POST",body:JSON.stringify({itemId:b.dataset.action.slice(13)})});toast(d.voicePlayback?"بدأ البوت تشغيل الصوت في الروم":d.notified?"أُعلن بدء المشاهدة في Discord":(d.playbackMessage||"بدأت جلسة المشاهدة"))}catch(err){toast(err.message)}});
+  $("#cinema-add-form").onsubmit=async e=>{e.preventDefault();try{await api("/api/cinema",{method:"POST",body:JSON.stringify(Object.fromEntries(new FormData(e.target)))});toast("تمت الإضافة");cinema()}catch(err){toast(err.message)}};
+  $('[data-action="cinema-stop"]').forEach(b=>b.onclick=async()=>{try{await api("/api/cinema/stop",{method:"POST"});toast("تم إيقاف تشغيل الصوت")}catch(err){toast(err.message)}});
   $$("[data-action^=cinema-delete:]").forEach(b=>b.onclick=async()=>{try{await api("/api/cinema/"+b.dataset.action.slice(14),{method:"DELETE"});cinema()}catch(err){toast(err.message)}});
  }
 }
